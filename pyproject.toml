@@ -1,0 +1,18 @@
+[project]
+name = "Concierge.AI_v2"
+version = "0.1.0"
+description = "modular, AI supported chat support for hotels"
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
