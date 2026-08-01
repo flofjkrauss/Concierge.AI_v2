@@ -1,7 +1,7 @@
 [project]
-name = "Concierge.AI_v2"
+name = "project-template"
 version = "0.1.0"
-description = "modular, AI supported chat support for hotels"
+description = "beautiful template"
 readme = "README.md"
 requires-python = ">=3.12"
 
