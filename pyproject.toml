@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = [".", "src"]
 
 [tool.ruff]
 line-length = 88
@@ -16,3 +16,10 @@ target-version = "py312"
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
