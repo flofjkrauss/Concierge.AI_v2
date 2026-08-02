@@ -18,7 +18,9 @@ class StatusResponse(BaseModel):
     status: str
 
 
-@router.get("/favicon.ico", include_in_schema=False) #include_in_schema=False removes it from auto-generated documentation
+@router.get(
+    "/favicon.ico", include_in_schema=False
+)  # include_in_schema=False removes it from auto-generated documentation
 def favicon(
     settings: Annotated[FastapiSettings, Depends(FastapiSettings.get_settings)],
 ) -> FileResponse:

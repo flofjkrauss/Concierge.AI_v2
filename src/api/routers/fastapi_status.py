@@ -1,15 +1,12 @@
 """FastAPI server status"""
-import logging
-logger = logging.getLogger(__name__)
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from configuration.fastapi import FastapiSettings
-
+from observability import LOG_MSG
 
 router = APIRouter(prefix="/api", tags=["server-status"])
 
@@ -27,16 +24,9 @@ def read_status(
 ) -> StatusResponse:
     """Return the current service health status."""
     status = "healthy"
-    logger.debug(
-        "FastAPI status requested",
-        extra={
-            "event": "fastapi_status_requested",
-            "service": settings.service_name,
-            "status": status,
-        })
+    LOG_MSG.debug(f"FastAPI status requested. Status is: {status}")
+
     return StatusResponse(
         service=settings.service_name,
         status=status,
     )
-
-

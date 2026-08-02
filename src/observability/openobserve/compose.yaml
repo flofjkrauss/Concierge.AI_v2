@@ -15,6 +15,7 @@ services:
     volumes:
       - openobserve-data:/data
 
+
   vector:
     image: timberio/vector:0.57.0-debian
     container_name: concierge-ai-vector
@@ -33,6 +34,62 @@ services:
       - ../../../logs:/var/log/concierge-ai:ro
       - vector-data:/var/lib/vector
 
+
+  openobserve-plugin-loader:
+    image: alpine:latest
+    container_name: concierge-ai-grafana-plugin-loader
+    restart: "no"
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        apk add --no-cache curl
+        rm -rf /plugins/openobserve
+        rm -f /plugins/zo_gp.tar.gz
+
+        curl -fsSL \
+          -o /plugins/zo_gp.tar.gz \
+          https://zincsearch-releases.s3.us-west-2.amazonaws.com/zo_gp/zo_gp.tar.gz
+
+        tar -xzf /plugins/zo_gp.tar.gz -C /plugins
+        rm /plugins/zo_gp.tar.gz
+
+    volumes:
+      - grafana-plugins:/plugins
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: concierge-ai-grafana
+    restart: unless-stopped
+
+    depends_on:
+      openobserve:
+        condition: service_started
+
+      openobserve-plugin-loader:
+        condition: service_completed_successfully
+
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+
+      GF_SERVER_ROOT_URL: http://localhost:3000
+
+      GF_PLUGINS_ENABLE_ALPHA: "true"
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: openobserve
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - grafana-plugins:/var/lib/grafana/plugins
+
+
 volumes:
   openobserve-data:
   vector-data:
+  grafana-data:
+  grafana-plugins:

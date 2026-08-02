@@ -12,7 +12,7 @@ class LoggingSettings(Settings):
     """Runtime settings for application logging."""
 
     log_level: str = ApplicationSettings.loglevel
-    log_directory: Path = (ApplicationSettings.project_root / "logs")
+    log_directory: Path = ApplicationSettings.project_root / "logs"
     log_file_name: str = "concierge-ai.jsonl"
 
     max_file_size_bytes: int = 10 * 1024 * 1024

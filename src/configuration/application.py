@@ -1,13 +1,15 @@
 """application wide configurations"""
 
 from dataclasses import dataclass
-from configuration.generic import Settings
 from pathlib import Path
+
+from configuration.generic import Settings
 
 
 @dataclass(frozen=True)
 class ApplicationSettings(Settings):
     """Runtime settings."""
+
     # general config
     project_root: Path = Path(__file__).resolve().parents[2]
     app_name: str = "ConciergeAI"
@@ -18,6 +20,5 @@ class ApplicationSettings(Settings):
     port: int = 8000
     reload: bool = True
 
-    #loglevel config
+    # loglevel config
     loglevel: str = "DEBUG"
-    

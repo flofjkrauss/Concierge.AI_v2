@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from configuration.generic import Settings
 from configuration.application import ApplicationSettings
+from configuration.generic import Settings
 
 
 @dataclass(frozen=True)

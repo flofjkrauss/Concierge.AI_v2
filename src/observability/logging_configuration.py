@@ -3,8 +3,8 @@
 import logging
 from logging.handlers import RotatingFileHandler
 
-from observability.json_formatter import JsonFormatter
 from configuration.logging import LoggingSettings
+from observability.json_formatter import JsonFormatter
 
 _HANDLER_NAME = "concierge_ai_json_file"
 
@@ -45,10 +45,7 @@ def configure_logging() -> None:
 
 def _handler_is_configured(logger: logging.Logger) -> bool:
     """Return whether the ConciergeAI file handler already exists."""
-    return any(
-        handler.get_name() == _HANDLER_NAME
-        for handler in logger.handlers
-    )
+    return any(handler.get_name() == _HANDLER_NAME for handler in logger.handlers)
 
 
 def _resolve_log_level(level_name: str) -> int:
@@ -56,6 +53,6 @@ def _resolve_log_level(level_name: str) -> int:
     level = getattr(logging, level_name.upper(), None)
 
     if not isinstance(level, int):
-        raise ValueError(f"Invalid logging level: {level_name}")
+        raise TypeError(f"Invalid logging level: {level_name}")
 
     return level
