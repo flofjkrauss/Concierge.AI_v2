@@ -8,6 +8,8 @@ from configuration.fastapi import FastapiSettings
 from utils.import_router import import_router
 from utils.init_logging import init_logging, lifespan
 
+from observability import LOG_MSG
+
 
 def create_app() -> FastAPI:
     """Start the application."""
