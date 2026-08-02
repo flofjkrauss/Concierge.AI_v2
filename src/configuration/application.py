@@ -8,9 +8,16 @@ from pathlib import Path
 @dataclass(frozen=True)
 class ApplicationSettings(Settings):
     """Runtime settings."""
+    # general config
     project_root: Path = Path(__file__).resolve().parents[2]
     app_name: str = "ConciergeAI"
     app_version: str = "0.01"
+
+    # webserver config
     host: str = "127.0.0.1"
     port: int = 8000
     reload: bool = True
+
+    #loglevel config
+    loglevel: str = "DEBUG"
+    

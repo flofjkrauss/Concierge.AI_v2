@@ -1,0 +1,48 @@
+data_dir: /var/lib/vector
+
+sources:
+  concierge_ai_logs:
+    type: file
+
+    include:
+      - /var/log/concierge-ai/*.jsonl*
+
+    read_from: beginning
+
+
+transforms:
+  parse_concierge_ai_json:
+    type: remap
+
+    inputs:
+      - concierge_ai_logs
+
+    source: |
+      . = parse_json!(string!(.message))
+      ._timestamp = .timestamp
+
+
+sinks:
+  openobserve:
+    type: http
+
+    inputs:
+      - parse_concierge_ai_json
+
+    uri: http://openobserve:5080/api/default/concierge_ai/_json
+    method: post
+
+    auth:
+      strategy: basic
+      user: "${OPENOBSERVE_USER}"
+      password: "${OPENOBSERVE_PASSWORD}"
+
+    compression: gzip
+
+    encoding:
+      codec: json
+      timestamp_format: rfc3339
+
+    healthcheck:
+      enabled: true
+      uri: http://openobserve:5080/healthz
