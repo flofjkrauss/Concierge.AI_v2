@@ -41,7 +41,9 @@ class Money:
             currency=self.currency,
         )
 
-    def __eq__(self, other: "Money") -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Money):
+            raise TypeError("unknown object comparison")
         self._require_same_currency(other)
         if other.currency != self.currency:
             raise ValueError("money values with different currencies cannot be compared")

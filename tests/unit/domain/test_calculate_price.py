@@ -4,8 +4,6 @@ from datetime import date
 from decimal import Decimal
 from unittest.mock import create_autospec
 
-import pytest
-
 from database.interface import DatabaseInterface
 from domain.entities.booking_request import BookingRequest
 from domain.entities.room import Room
@@ -13,7 +11,6 @@ from domain.services.calculate_price import calculate_price
 from domain.value_objects.money import Money
 from domain.value_objects.room_category import RoomCategory
 from domain.value_objects.stay_period import StayPeriod
-
 
 
 def _create_booking_request(
@@ -75,7 +72,7 @@ def test_calculate_price_without_breakfast(
         instance=True,
     )
 
-    database.get_breakfast_price.return_value = Money(20, "USD")
+    database.get_breakfast_price.return_value = Money(Decimal(20), "USD")
 
     result = calculate_price(
         booking_request=booking_request,
@@ -84,7 +81,7 @@ def test_calculate_price_without_breakfast(
     )
     # 3 nights stay a 100 USD = 300 USD
 
-    assert result == Money(300, "USD")
+    assert result == Money(Decimal(300), "USD")
 
 
 
@@ -106,7 +103,7 @@ def test_calculate_price_with_breakfast(
         instance=True,
     )
 
-    database.get_breakfast_price.return_value = Money(20, "USD")
+    database.get_breakfast_price.return_value = Money(Decimal(20), "USD")
 
     result = calculate_price(
         booking_request=booking_request,
@@ -115,4 +112,4 @@ def test_calculate_price_with_breakfast(
     )
     # 3 nights stay a 100 USD = 300 USD
 
-    assert result == Money(420, "USD")
+    assert result == Money(Decimal(420), "USD")
