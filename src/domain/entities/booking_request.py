@@ -21,3 +21,9 @@ class BookingRequest:
 
         if self.guest_count < 1:
             raise ValueError("guest_count must be at least 1")
+
+    def __str__(self) -> str:
+        retval = f"Booking request {self.request_id}: {self.guest_count} guests {self.stay_period}."
+        retval += f"Breakfast included: {self.breakfast_included}"
+        retval += f"Accessability requested: {self.accessible_requested}"
+        return retval

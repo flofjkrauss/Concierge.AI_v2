@@ -15,6 +15,9 @@ class StayPeriod:
         if self.check_out <= self.check_in:
             raise ValueError("check_out must be after check_in")
 
+    def __str__(self) -> str:
+        return f"from {self.check_in} to {self.check_out}"
+
     @property
     def number_of_nights(self) -> int:
         """Return the number of booked nights."""
