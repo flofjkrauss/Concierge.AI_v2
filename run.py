@@ -5,10 +5,9 @@ from fastapi import FastAPI
 
 from configuration.application import ApplicationSettings
 from configuration.fastapi import FastapiSettings
+from utils.connect_database import connect
 from utils.import_router import import_router
 from utils.init_logging import init_logging, lifespan
-
-from observability import LOG_MSG
 
 
 def create_app() -> FastAPI:
@@ -24,6 +23,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app = import_router(app)
+    app.state.database = connect()
 
     return app
 
