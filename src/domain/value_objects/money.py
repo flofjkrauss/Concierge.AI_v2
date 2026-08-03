@@ -41,6 +41,13 @@ class Money:
             currency=self.currency,
         )
 
+    def __eq__(self, other: "Money") -> bool:
+        self._require_same_currency(other)
+        if other.currency != self.currency:
+            raise ValueError("money values with different currencies cannot be compared")
+
+        return self.amount == other.amount
+
     def _require_same_currency(self, other: "Money") -> None:
         if self.currency != other.currency:
             raise ValueError(
