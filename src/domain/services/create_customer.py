@@ -14,15 +14,19 @@ def create_customer(
     database: DatabaseInterface
 ) -> Customer | None:
     """Create a new customer objekt and store it to database"""
-
-    customer = Customer(
-        customer_id=str(uuid4()),
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        phone="",
-        preferred_language=preferred_language
-    )
+    customer = database.identify_customer(first_name=first_name,
+                                            last_name=last_name,
+                                            email=email)
+    if customer is None:
+        LOG_MSG.debug(f"Customer could not be identified: {first_name} {last_name} {email}")
+        customer = Customer(
+            customer_id=str(uuid4()),
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            phone="",
+            preferred_language=preferred_language
+        )
 
     if customer is None:
         LOG_MSG.debug(
@@ -34,3 +38,6 @@ def create_customer(
         )
 
     return customer
+
+def get_customer(customer_id: str, database: DatabaseInterface) -> Customer | None:
+    return database.get_customer(customer_id=customer_id)
