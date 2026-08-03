@@ -18,3 +18,9 @@ def get_information(
         return ""
 
     return information
+
+def get_hotel_name(database: DatabaseInterface) -> str:
+    return database.get_hotel_name()
+
+def get_hotel_address(database: DatabaseInterface) -> str:
+    return database.get_hotel_address()

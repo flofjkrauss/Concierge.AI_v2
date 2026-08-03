@@ -61,3 +61,6 @@ def confirm_booking(
         f"Booking {booking.booking_id} was confirmed from booking request {booking_request.request_id} for room {room.room_id} and customer {customer.customer_id}.")
 
     return booking
+
+def get_room(room_id: str, database: DatabaseInterface) -> Room | None:
+    return database.get_room(room_id=room_id)
