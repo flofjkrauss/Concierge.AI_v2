@@ -1,0 +1,220 @@
+{
+  "schema_version": "1.0",
+  "hotel": {
+    "hotel_id": "hotel-hlh-001",
+    "tenant_id": "harbour-light-hotel",
+    "name": "Harbour Light Hotel",
+    "currency": "USD",
+    "timezone": "America/New_York",
+    "address": {
+      "street": "18 Harbour Lane",
+      "city": "Portland",
+      "state": "Maine",
+      "postal_code": "04101",
+      "country_code": "US"
+    },
+    "breakfast_price": "15"
+  },
+  "rooms": [
+    {
+      "room_id": "room-101",
+      "number": "101",
+      "floor": 1,
+      "category_id": "double",
+      "accessible": true,
+      "in_service": true,
+      "price_per_night": "90",
+      "max_occupancy": 2
+    },
+    {
+      "room_id": "room-102",
+      "number": "102",
+      "floor": 1,
+      "category_id": "double",
+      "accessible": false,
+      "price_per_night": "90",
+      "max_occupancy": 2,
+      "in_service": true
+    },
+    {
+      "room_id": "room-103",
+      "number": "103",
+      "floor": 1,
+      "category_id": "double",
+      "accessible": false,
+      "price_per_night": "90",
+      "max_occupancy": 2,
+      "in_service": true
+    },
+    {
+      "room_id": "room-104",
+      "number": "104",
+      "floor": 1,
+      "category_id": "double",
+      "accessible": false,
+      "price_per_night": "90",
+      "max_occupancy": 2,
+      "in_service": true
+    },
+    {
+      "room_id": "room-105",
+      "number": "105",
+      "floor": 1,
+      "category_id": "double",
+      "accessible": true,
+      "price_per_night": "90",
+      "max_occupancy": 2,
+      "in_service": true
+    },
+    {
+      "room_id": "room-106",
+      "number": "106",
+      "floor": 1,
+      "category_id": "double",
+      "accessible": false,
+      "price_per_night": "90",
+      "max_occupancy": 2,
+      "in_service": true
+    },
+    {
+      "room_id": "room-107",
+      "number": "107",
+      "floor": 1,
+      "category_id": "single",
+      "accessible": false,
+      "price_per_night": "70",
+      "max_occupancy": 1,
+      "in_service": true
+    },
+    {
+      "room_id": "room-108",
+      "number": "108",
+      "floor": 1,
+      "category_id": "single",
+      "accessible": false,
+      "price_per_night": "70",
+      "max_occupancy": 1,
+      "in_service": true
+    },
+    {
+      "room_id": "room-109",
+      "number": "109",
+      "floor": 1,
+      "category_id": "single",
+      "accessible": false,
+      "price_per_night": "70",
+      "max_occupancy": 1,
+      "in_service": true
+    },
+    {
+      "room_id": "room-110",
+      "number": "110",
+      "floor": 1,
+      "category_id": "single",
+      "accessible": false,
+      "price_per_night": "70",
+      "max_occupancy": 1,
+      "in_service": true
+    },
+    {
+      "room_id": "room-201",
+      "number": "201",
+      "floor": 2,
+      "category_id": "deluxe",
+      "accessible": true,
+      "price_per_night": "150",
+      "max_occupancy": 3,
+      "in_service": true
+    },
+    {
+      "room_id": "room-202",
+      "number": "202",
+      "floor": 2,
+      "category_id": "deluxe",
+      "accessible": false,
+      "price_per_night": "150",
+      "max_occupancy": 3,
+      "in_service": true
+    },
+    {
+      "room_id": "room-203",
+      "number": "203",
+      "floor": 2,
+      "category_id": "deluxe",
+      "accessible": false,
+      "price_per_night": "150",
+      "max_occupancy": 3,
+      "in_service": true
+    },
+    {
+      "room_id": "room-204",
+      "number": "204",
+      "floor": 2,
+      "category_id": "deluxe",
+      "accessible": false,
+      "price_per_night": "150",
+      "max_occupancy": 3,
+      "in_service": true
+    },
+    {
+      "room_id": "room-205",
+      "number": "205",
+      "floor": 2,
+      "category_id": "deluxe",
+      "accessible": false,
+      "price_per_night": "150",
+      "max_occupancy": 3,
+      "in_service": true
+    },
+    {
+      "room_id": "room-206",
+      "number": "206",
+      "floor": 2,
+      "category_id": "family",
+      "accessible": true,
+      "price_per_night": "120",
+      "max_occupancy": 4,
+      "in_service": true
+    },
+    {
+      "room_id": "room-207",
+      "number": "207",
+      "floor": 2,
+      "category_id": "family",
+      "accessible": false,
+      "price_per_night": "120",
+      "max_occupancy": 4,
+      "in_service": true
+    },
+    {
+      "room_id": "room-208",
+      "number": "208",
+      "floor": 2,
+      "category_id": "family",
+      "accessible": false,
+      "price_per_night": "120",
+      "max_occupancy": 4,
+      "in_service": true
+    },
+    {
+      "room_id": "room-209",
+      "number": "209",
+      "floor": 2,
+      "category_id": "family",
+      "accessible": false,
+      "price_per_night": "120",
+      "max_occupancy": 4,
+      "in_service": true
+    },
+    {
+      "room_id": "room-210",
+      "number": "210",
+      "floor": 2,
+      "category_id": "family",
+      "accessible": false,
+      "price_per_night": "120",
+      "max_occupancy": 4,
+      "in_service": true
+    }
+  ]
+}

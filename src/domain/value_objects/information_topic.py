@@ -1,0 +1,36 @@
+"""Supported hotel room categories."""
+
+from enum import StrEnum
+
+
+class InformationTopic(StrEnum):
+    """Possible hotel information topics."""
+
+    CHECK_IN="check_in"
+    CHECK_OUT="check_out"
+    WIFI="wifi"
+    BREAKFAST="breakfast"
+    PETS="pets"
+    PARKING="parking"
+    ROOM_CATEGORIES="room_categories"
+    LOCATION="location"
+    ACCESSABILITY="accessability"
+    FRONT_DESK="front_desk"
+    EARLY_CHECK_IN="early_check_in"
+    LATE_CHECK_IN="late_check_in"
+    RESTAURANT="restaurant"
+    BAR="bar"
+    ROOM_SERVICE="room_service"
+    EV_CHARGING="ev_charging"
+    SERVICE_ANIMALS="service_animals"
+    FAMILIY_SERVICES="family_services"
+    SMOKING="smoking"
+    HOUSEKEEPING="housekeeping"
+    LAUNDRY="laundry"
+    LUGGAGE_STORAGE="luggage_storage"
+    PAYMENT_METHODS="payment_methods"
+    CANCELLATION_POLICY="cancellation_policy"
+    PUBLIC_TRANSPORT="public_transport"
+    AIRPORT_TRANSFER="airport_transfer"
+    LOCAL_ATTRACTIONS="local_attractions"
+    CONTACT="contact"

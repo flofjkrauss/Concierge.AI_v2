@@ -22,3 +22,6 @@ class ApplicationSettings(Settings):
 
     # loglevel config
     loglevel: str = "DEBUG"
+
+    # database path
+    db_path: Path = project_root / "data"

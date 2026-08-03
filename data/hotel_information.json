@@ -1,0 +1,175 @@
+{
+  "schema_version": "1.0",
+  "hotel_id": "hotel-hlh-001",
+  "tenant_id": "harbour-light-hotel",
+  "information": [
+    {
+      "information_id": "HLH-INFO-001",
+      "topic": "check_in",
+      "title": "Check-in time",
+      "answer": "Check-in begins at 3:00 PM. The front desk is staffed around the clock for late arrivals."
+    },
+    {
+      "information_id": "HLH-INFO-002",
+      "topic": "check_out",
+      "title": "Check-out time",
+      "answer": "Check-out is by 11:00 AM on the departure date."
+    },
+    {
+      "information_id": "HLH-INFO-003",
+      "topic": "wifi",
+      "title": "Wi-Fi",
+      "answer": "Complimentary Wi-Fi is available throughout the hotel and in every guest room."
+    },
+    {
+      "information_id": "HLH-INFO-004",
+      "topic": "breakfast",
+      "title": "Breakfast service",
+      "answer": "A standard breakfast is served daily from 7:00 AM to 10:00 AM and can be added to a room reservation."
+    },
+    {
+      "information_id": "HLH-INFO-005",
+      "topic": "pets",
+      "title": "Pet policy",
+      "answer": "Pets are not permitted, except for trained service animals."
+    },
+    {
+      "information_id": "HLH-INFO-006",
+      "topic": "parking",
+      "title": "Guest parking",
+      "answer": "Complimentary on-site parking is available for registered hotel guests, subject to availability."
+    },
+    {
+      "information_id": "HLH-INFO-007",
+      "topic": "room_categories",
+      "title": "Room categories",
+      "answer": "The hotel offers Single Rooms for one guest, Double Rooms for two guests, Deluxe Rooms for up to three guests, and Family Rooms for up to four guests."
+    },
+    {
+      "information_id": "HLH-INFO-008",
+      "topic": "location",
+      "title": "Hotel location",
+      "answer": "Harbour Light Hotel is located at 18 Harbour Lane in Portland, Maine, a five-minute walk from the Old Port waterfront."
+    },
+    {
+      "information_id": "HLH-INFO-009",
+      "topic": "accessibility",
+      "title": "Accessibility",
+      "answer": "The hotel has a step-free entrance, elevator access to every guest floor, and designated accessible rooms."
+    },
+    {
+      "information_id": "HLH-INFO-010",
+      "topic": "front_desk",
+      "title": "Front desk hours",
+      "answer": "The front desk is staffed 24 hours a day, seven days a week."
+    },
+    {
+      "information_id": "HLH-INFO-011",
+      "topic": "early_check_in",
+      "title": "Early check-in",
+      "answer": "Early check-in may be available from 12:00 PM for a fee of 35.00 USD and must be confirmed by the front desk."
+    },
+    {
+      "information_id": "HLH-INFO-012",
+      "topic": "late_check_out",
+      "title": "Late check-out",
+      "answer": "Late check-out until 2:00 PM may be available for a fee of 40.00 USD and must be confirmed by the front desk."
+    },
+    {
+      "information_id": "HLH-INFO-013",
+      "topic": "restaurant",
+      "title": "Restaurant",
+      "answer": "The Harbour Table restaurant serves dinner from 5:30 PM to 9:30 PM from Tuesday through Sunday."
+    },
+    {
+      "information_id": "HLH-INFO-014",
+      "topic": "bar",
+      "title": "Hotel bar",
+      "answer": "The Lantern Bar is open daily from 4:00 PM to 11:00 PM."
+    },
+    {
+      "information_id": "HLH-INFO-015",
+      "topic": "room_service",
+      "title": "Room service",
+      "answer": "Room service is available daily from 7:00 AM to 10:00 PM."
+    },
+    {
+      "information_id": "HLH-INFO-016",
+      "topic": "ev_charging",
+      "title": "Electric vehicle charging",
+      "answer": "Two electric vehicle charging spaces are available in the guest parking area on a first-come, first-served basis."
+    },
+    {
+      "information_id": "HLH-INFO-017",
+      "topic": "service_animals",
+      "title": "Service animals",
+      "answer": "Trained service animals are welcome throughout the hotel at no additional charge."
+    },
+    {
+      "information_id": "HLH-INFO-018",
+      "topic": "family_services",
+      "title": "Family services",
+      "answer": "Baby cots and high chairs are available free of charge when requested before arrival."
+    },
+    {
+      "information_id": "HLH-INFO-019",
+      "topic": "smoking",
+      "title": "Smoking policy",
+      "answer": "All guest rooms and indoor public areas are non-smoking. A designated outdoor smoking area is available."
+    },
+    {
+      "information_id": "HLH-INFO-020",
+      "topic": "housekeeping",
+      "title": "Housekeeping",
+      "answer": "Daily housekeeping is provided between 9:00 AM and 3:00 PM. Guests may request a preferred service window."
+    },
+    {
+      "information_id": "HLH-INFO-021",
+      "topic": "laundry",
+      "title": "Laundry service",
+      "answer": "Paid same-day laundry service is available for items received at the front desk before 9:00 AM on weekdays."
+    },
+    {
+      "information_id": "HLH-INFO-022",
+      "topic": "luggage_storage",
+      "title": "Luggage storage",
+      "answer": "Complimentary luggage storage is available on the arrival and departure dates."
+    },
+    {
+      "information_id": "HLH-INFO-023",
+      "topic": "payment_methods",
+      "title": "Accepted payment methods",
+      "answer": "The hotel accepts Visa, Mastercard, American Express, and Discover. Cash is accepted at check-out, but a payment card is required at check-in."
+    },
+    {
+      "information_id": "HLH-INFO-024",
+      "topic": "cancellation_policy",
+      "title": "Standard cancellation policy",
+      "answer": "Standard reservations may be cancelled without charge until 6:00 PM local hotel time two days before arrival. The rate selected at booking remains authoritative."
+    },
+    {
+      "information_id": "HLH-INFO-025",
+      "topic": "public_transport",
+      "title": "Public transport",
+      "answer": "The nearest city bus stop is at Commercial Street and Franklin Street, approximately a four-minute walk from the hotel."
+    },
+    {
+      "information_id": "HLH-INFO-026",
+      "topic": "airport_transfer",
+      "title": "Airport transfer",
+      "answer": "The hotel does not operate a shuttle. The front desk can arrange a taxi to or from Portland International Jetport."
+    },
+    {
+      "information_id": "HLH-INFO-027",
+      "topic": "local_attractions",
+      "title": "Nearby attractions",
+      "answer": "The Old Port waterfront, Portland Museum of Art, and Casco Bay ferry terminal are all within two miles of the hotel."
+    },
+    {
+      "information_id": "HLH-INFO-028",
+      "topic": "contact",
+      "title": "Hotel contact",
+      "answer": "The front desk can be reached at +1-207-555-0140 or frontdesk@harbourlight.example."
+    }
+  ]
+}

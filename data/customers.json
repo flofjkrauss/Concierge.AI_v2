@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "tenant_id": "harbour-light-hotel",
+  "customers": [
+    {
+      "customer_id": "HLH-CUST-0001",
+      "first_name": "Emma",
+      "last_name": "Carter",
+      "email": "emma.carter@example.com",
+      "phone": "+1-207-555-0101",
+      "preferred_language": "en",
+      "created_at": "2025-11-18T14:25:00-05:00"
+    },
+    {
+      "customer_id": "HLH-CUST-0002",
+      "first_name": "Noah",
+      "last_name": "Bennett",
+      "email": "noah.bennett@example.com",
+      "phone": "+1-617-555-0102",
+      "preferred_language": "en",
+      "created_at": "2026-01-09T09:40:00-05:00"
+    },
+    {
+      "customer_id": "HLH-CUST-0003",
+      "first_name": "Sofia",
+      "last_name": "Martinez",
+      "email": "sofia.martinez@example.com",
+      "phone": "+1-212-555-0103",
+      "preferred_language": "es",
+      "created_at": "2026-02-21T16:10:00-05:00"
+    },
+    {
+      "customer_id": "HLH-CUST-0004",
+      "first_name": "Liam",
+      "last_name": "O'Connor",
+      "email": "liam.oconnor@example.com",
+      "phone": "+353-1-555-0104",
+      "preferred_language": "en",
+      "created_at": "2026-03-14T11:05:00-04:00"
+    },
+    {
+      "customer_id": "HLH-CUST-0005",
+      "first_name": "Hannah",
+      "last_name": "Schneider",
+      "email": "hannah.schneider@example.com",
+      "phone": "+49-30-5550-0105",
+      "preferred_language": "de",
+      "created_at": "2026-04-30T13:50:00-04:00"
+    }
+  ]
+}
