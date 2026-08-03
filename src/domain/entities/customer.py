@@ -30,9 +30,6 @@ class Customer:
         if "@" not in self.email:
             raise ValueError("email must contain an '@' character")
 
-        if self.phone is not None and not self.phone.strip():
-            raise ValueError("phone must not be blank when provided")
-
         if len(self.preferred_language) != 2:
                     raise ValueError("a two letter language code must be provided")
 

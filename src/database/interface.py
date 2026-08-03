@@ -17,6 +17,10 @@ class DatabaseInterface(ABC):
         """Return all hotel rooms."""
 
     @abstractmethod
+    def get_room(self, room_id: str) -> Room | None:
+        """Return room by room_id"""
+
+    @abstractmethod
     def get_bookings(self) -> list[Booking]:
         """Return all bookings."""
 
@@ -37,6 +41,10 @@ class DatabaseInterface(ABC):
         """Return a customer by its ID."""
 
     @abstractmethod
+    def identify_customer(self, first_name: str, last_name: str, email: str) -> Customer | None:
+        """Try to find and already existing customer without knowing his customer_id"""
+
+    @abstractmethod
     def save_customer(self, customer: Customer) -> None:
         """Insert or update a customer."""
 
@@ -47,3 +55,11 @@ class DatabaseInterface(ABC):
     @abstractmethod
     def get_information(self, topic: InformationTopic) -> str | None:
         """Return hotel information for a topic."""
+
+    @abstractmethod
+    def get_hotel_name(self) -> str:
+        """Return hotel name"""
+
+    @abstractmethod
+    def get_hotel_address(self) -> str:
+        """Return hotel address"""

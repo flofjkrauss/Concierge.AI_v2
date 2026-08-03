@@ -46,6 +46,24 @@
       "phone": "+49-30-5550-0105",
       "preferred_language": "de",
       "created_at": "2026-04-30T13:50:00-04:00"
+    },
+    {
+      "customer_id": "2141941e-dff9-4f71-aff0-cf9b7851e073",
+      "first_name": "Florian",
+      "last_name": "Krauß",
+      "email": "test@mail.com",
+      "phone": "",
+      "preferred_language": "de",
+      "created_at": "2026-08-03T18:46:15.453439+00:00"
+    },
+    {
+      "customer_id": "7003a97c-3a36-4309-8e51-35a3aa9658f4",
+      "first_name": "Natalie",
+      "last_name": "Krauß",
+      "email": "test@mail.com",
+      "phone": "",
+      "preferred_language": "de",
+      "created_at": "2026-08-03T19:12:26.314489+00:00"
     }
   ]
 }

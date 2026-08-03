@@ -1,4 +1,4 @@
-"""Tests for the find-matching-rooms service."""
+"""Tests for the calculate-price service."""
 
 from datetime import date
 from decimal import Decimal
@@ -14,102 +14,91 @@ from domain.value_objects.stay_period import StayPeriod
 
 
 def _create_booking_request(
-        *,
-        breakfast_included: bool
+    *,
+    breakfast_included: bool,
 ) -> BookingRequest:
-    """Return a valid booking request."""
+    """Return a valid booking request for two guests and three nights."""
 
     return BookingRequest(
-        # 3 nights stay period
         request_id="request-001",
         stay_period=StayPeriod(
             check_in=date(2026, 10, 10),
             check_out=date(2026, 10, 13),
         ),
         guest_count=2,
-        breakfast_included=breakfast_included
+        breakfast_included=breakfast_included,
     )
 
 
-def _create_room(
-    room_id: str,
-    *,
-    max_occupancy: int = 2,
-    is_bookable: bool = True,
-) -> Room:
-    """Create a room for service tests."""
+def _create_room() -> Room:
+    """Return a valid room for price calculation."""
 
     return Room(
-        room_id=room_id,
-        room_number=room_id.removeprefix("room-"),
+        room_id="room-107",
+        room_number="107",
         floor=1,
         category=RoomCategory.DOUBLE,
-        max_occupancy=max_occupancy,
+        max_occupancy=2,
         price_per_night=Money(
             amount=Decimal(100),
             currency="USD",
         ),
         is_accessible=False,
-        is_bookable=is_bookable,
+        is_bookable=True,
     )
 
 
-def test_calculate_price_without_breakfast(
-) -> None:
-    """The service should return rooms that can fulfil the request."""
+def test_calculate_price_without_breakfast() -> None:
+    """Return only the room price when breakfast is not requested."""
 
     booking_request = _create_booking_request(
-        breakfast_included=False
+        breakfast_included=False,
     )
-
-    room = _create_room(
-        "room-107",
-        max_occupancy=1,
-    )
+    room = _create_room()
 
     database = create_autospec(
         DatabaseInterface,
         instance=True,
     )
 
-    database.get_breakfast_price.return_value = Money(Decimal(20), "USD")
-
     result = calculate_price(
         booking_request=booking_request,
         room=room,
         database=database,
     )
-    # 3 nights stay a 100 USD = 300 USD
 
-    assert result == Money(Decimal(300), "USD")
+    assert result == Money(
+        amount=Decimal(300),
+        currency="USD",
+    )
+    database.get_breakfast_price.assert_not_called()
 
 
-
-def test_calculate_price_with_breakfast(
-) -> None:
-    """The service should return rooms that can fulfil the request."""
+def test_calculate_price_with_breakfast() -> None:
+    """Add breakfast per guest and night when requested."""
 
     booking_request = _create_booking_request(
-        breakfast_included=True
+        breakfast_included=True,
     )
-
-    room = _create_room(
-        "room-107",
-        max_occupancy=1,
-    )
+    room = _create_room()
 
     database = create_autospec(
         DatabaseInterface,
         instance=True,
     )
-
-    database.get_breakfast_price.return_value = Money(Decimal(20), "USD")
+    database.get_breakfast_price.return_value = Money(
+        amount=Decimal(20),
+        currency="USD",
+    )
 
     result = calculate_price(
         booking_request=booking_request,
         room=room,
         database=database,
     )
-    # 3 nights stay a 100 USD = 300 USD
 
-    assert result == Money(Decimal(420), "USD")
+    assert result == Money(
+        amount=Decimal(420),
+        currency="USD",
+    )
+    database.get_breakfast_price.assert_called_once_with()

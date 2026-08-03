@@ -33,6 +33,19 @@ class JsonDatabase(DatabaseInterface):
 
         self._validate_files_exist()
 
+    def get_room(self, room_id: str) -> Room | None:
+        """Return one specific room."""        
+        with self._lock:
+            data = self._read_json(self._hotel_assets_path)
+
+        hotel_currency = data["hotel"]["currency"]
+        for record in data["rooms"]:
+            if record["room_id"] == room_id:
+                room = self._room_from_record(record=record, currency=hotel_currency)
+                return room
+            
+        return None
+
     def get_rooms(self) -> list[Room]:
         """Return all rooms from the hotel-assets file."""
 
@@ -142,6 +155,23 @@ class JsonDatabase(DatabaseInterface):
 
         return None
 
+    def identify_customer(
+            self, first_name: str ,
+            last_name: str,
+            email: str) -> Customer | None:
+         with self._lock:
+            data = self._read_json(self._customers_path)
+
+            for record in data["customers"]:
+                if all([
+                    (record["first_name"] == first_name),
+                    (record["last_name"] == last_name),
+                    (record["email"] == email)
+                ]):
+                    return self.get_customer(record["customer_id"])
+                    
+            return None
+
     def save_customer(self, customer: Customer) -> None:
         """Insert a new customer or update an existing customer."""
 
@@ -208,6 +238,17 @@ class JsonDatabase(DatabaseInterface):
                 return str(record["answer"])
 
         return None
+
+    def get_hotel_name(self) -> str:
+        with self._lock:
+            data = self._read_json(self._hotel_assets_path)
+            return str(data["hotel"]["name"])
+
+    def get_hotel_address(self) -> str:
+        with self._lock:
+            data = self._read_json(self._hotel_assets_path)
+            address_data = data["hotel"]["address"]
+            return f"{address_data["street"]}, {address_data["postal_code"]} {address_data["city"]}, {address_data["country_code"]}"
 
     def _room_from_record(
         self,
