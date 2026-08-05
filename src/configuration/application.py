@@ -25,3 +25,8 @@ class ApplicationSettings(Settings):
 
     # database path
     db_path: Path = project_root / "data"
+
+    #conversation settings
+    msg_max_length: int = 250
+    max_num_msg_with_intent_unknown: int = 5
+    domain_language: str = "en"

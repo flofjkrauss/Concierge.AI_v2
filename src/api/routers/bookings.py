@@ -50,10 +50,7 @@ def read_booking_to_cancel(
     )
     return _response_from_booking(booking=booking, database=database)
 
-@router.post(
-        "/request",
-        response_model=BookingResponse
-        )
+@router.post("/request", response_model=BookingResponse)
 def read_booking_request(
     booking_request: BookingRequest,
     room_id: str,

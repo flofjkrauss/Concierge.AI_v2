@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from pytest import MonkeyPatch
 
 from observability.log_messages import LOG_MSG
-from utils.init_logging import lifespan
+from utils.fastapi_lifespan import lifespan
 
 
 def test_lifespan_logs_startup_and_shutdown(
