@@ -23,7 +23,8 @@ class UserInteraction:
             LOG_MSG.debug("Too long message detected")
             return None
         return Message(
-            content=msg
+            content=msg,
+            original_content=msg
         )
 
     def send_session_id(self, session_id: str) -> InteractionResponse:

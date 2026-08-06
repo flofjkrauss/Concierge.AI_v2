@@ -1,5 +1,4 @@
 """data collector for collecting data from chat sessions"""
-from __future__ import annotations
 
 from conversation.entities.information import Information
 from conversation.value_object.information_fields import InformationField
