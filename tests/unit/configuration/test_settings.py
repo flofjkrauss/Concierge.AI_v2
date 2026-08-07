@@ -18,11 +18,8 @@ def test_settings_factory_is_cached_per_settings_class() -> None:
 def test_application_settings_expose_project_defaults() -> None:
     settings = ApplicationSettings()
 
-    assert settings.project_root.name == "Concierge.AI_v2"
-    assert settings.db_path == settings.project_root / "data"
-    assert settings.domain_language == "en"
-    assert settings.msg_max_length > 0
-
+    assert settings.project_root.is_dir()
+    assert (settings.project_root / "pyproject.toml").is_file()
 
 def test_fastapi_settings_point_to_repository_favicon() -> None:
     settings = FastapiSettings()

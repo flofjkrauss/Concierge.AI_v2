@@ -50,7 +50,7 @@ class ConversationController:
         message: str,
     ) -> InteractionResponse:
         """Process one message in the checkpoint selected by ``session_id``."""
-
+        
         snapshot = cast(
             StateSnapshot,
             self._graph.get_state(self._config(session_id)),
