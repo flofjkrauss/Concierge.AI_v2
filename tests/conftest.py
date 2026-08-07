@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+from datetime import UTC, date, datetime
+from decimal import Decimal
+
+import pytest
+
+from database.interface import DatabaseInterface
+from domain.entities.booking import Booking
+from domain.entities.booking_request import BookingRequest
+from domain.entities.customer import Customer
+from domain.entities.room import Room
+from domain.value_objects.booking_status import BookingStatus
+from domain.value_objects.information_topic import InformationTopic
+from domain.value_objects.money import Money
+from domain.value_objects.room_category import RoomCategory
+from domain.value_objects.stay_period import StayPeriod
+
+
+class InMemoryDatabase(DatabaseInterface):
+    """Small deterministic database double used by domain and API tests."""
+
+    def __init__(self) -> None:
+        self.rooms: list[Room] = []
+        self.bookings: list[Booking] = []
+        self.customers: list[Customer] = []
+        self.information: dict[InformationTopic, str] = {}
+        self.breakfast_price = Money(Decimal("12.50"), "EUR")
+        self.hotel_name = "Harbour Light Hotel"
+        self.hotel_address = "1 Harbour Way, 12345 Seaside, DE"
+        self.saved_bookings: list[Booking] = []
+        self.saved_customers: list[Customer] = []
+
+    def get_rooms(self) -> list[Room]:
+        return list(self.rooms)
+
+    def get_room(self, room_id: str) -> Room | None:
+        return next((room for room in self.rooms if room.room_id == room_id), None)
+
+    def get_bookings(self) -> list[Booking]:
+        return list(self.bookings)
+
+    def get_booking(self, booking_id: str) -> Booking | None:
+        return next(
+            (booking for booking in self.bookings if booking.booking_id == booking_id),
+            None,
+        )
+
+    def save_booking(self, booking: Booking) -> None:
+        self.saved_bookings.append(booking)
+        for index, current in enumerate(self.bookings):
+            if current.booking_id == booking.booking_id:
+                self.bookings[index] = booking
+                break
+        else:
+            self.bookings.append(booking)
+
+    def get_customers(self) -> list[Customer]:
+        return list(self.customers)
+
+    def get_customer(self, customer_id: str) -> Customer | None:
+        return next(
+            (customer for customer in self.customers if customer.customer_id == customer_id),
+            None,
+        )
+
+    def identify_customer(
+        self,
+        first_name: str,
+        last_name: str,
+        email: str,
+    ) -> Customer | None:
+        return next(
+            (
+                customer
+                for customer in self.customers
+                if (
+                    customer.first_name,
+                    customer.last_name,
+                    customer.email,
+                )
+                == (first_name, last_name, email)
+            ),
+            None,
+        )
+
+    def save_customer(self, customer: Customer) -> None:
+        self.saved_customers.append(customer)
+        for index, current in enumerate(self.customers):
+            if current.customer_id == customer.customer_id:
+                self.customers[index] = customer
+                break
+        else:
+            self.customers.append(customer)
+
+    def get_breakfast_price(self) -> Money:
+        return self.breakfast_price
+
+    def get_information(self, topic: InformationTopic) -> str | None:
+        return self.information.get(topic)
+
+    def get_hotel_name(self) -> str:
+        return self.hotel_name
+
+    def get_hotel_address(self) -> str:
+        return self.hotel_address
+
+
+@pytest.fixture
+def stay_period() -> StayPeriod:
+    return StayPeriod(check_in=date(2030, 6, 10), check_out=date(2030, 6, 13))
+
+
+@pytest.fixture
+def room() -> Room:
+    return Room(
+        room_id="room-101",
+        room_number="101",
+        floor=1,
+        category=RoomCategory.DOUBLE,
+        max_occupancy=2,
+        price_per_night=Money(Decimal("100.00"), "EUR"),
+        is_accessible=True,
+    )
+
+
+@pytest.fixture
+def booking_request(stay_period: StayPeriod) -> BookingRequest:
+    return BookingRequest(
+        request_id="request-1",
+        stay_period=stay_period,
+        guest_count=2,
+        breakfast_included=False,
+        accessible_requested=False,
+    )
+
+
+@pytest.fixture
+def customer() -> Customer:
+    return Customer(
+        customer_id="customer-1",
+        first_name="Alex",
+        last_name="Morgan",
+        email="alex@example.com",
+    )
+
+
+@pytest.fixture
+def booking(stay_period: StayPeriod) -> Booking:
+    return Booking(
+        booking_id="booking-1",
+        customer_id="customer-1",
+        room_id="room-101",
+        stay_period=stay_period,
+        guest_count=2,
+        total_price=Money(Decimal("300.00"), "EUR"),
+        status=BookingStatus.CONFIRMED,
+        created_at=datetime(2030, 1, 1, tzinfo=UTC),
+    )
+
+
+@pytest.fixture
+def database() -> InMemoryDatabase:
+    return InMemoryDatabase()
