@@ -6,7 +6,14 @@ from conversation.entities.message import Message
 from conversation.value_object.information_fields import InformationField
 from domain.value_objects.information_topic import InformationTopic
 
-
+#debugging helper class
+class DebugTestInput:
+    AVAILABILIY_CHECK = "show availability"
+    BOOKING_CHECK = "show booking"
+    BOOKING_CANCELLATION = "cancel booking"
+    BOOKING_REQUEST = "request booking"
+    INFORMATION_REQUEST = "request info"
+    BULLSHIT = "fuckyou"
 
 class InformationExtractor:
 
@@ -15,7 +22,7 @@ class InformationExtractor:
 
         # TODO: apply module for intent extraction here
         # do some dark magic again
-        if message.content == "yes" or message.content == "no":
+        if message.original_content == "yes" or message.original_content == "no":
             return []
 
         # the following is just for testing and has to be remained later
@@ -33,7 +40,7 @@ class InformationExtractor:
                 )
         check_out = Information(
                             information_field=InformationField.CHECK_OUT,
-                            content=date(2026, 10, 20)
+                            content=date(2027, 8, 11)
                         )
 
         guest_count = Information(
@@ -68,5 +75,23 @@ class InformationExtractor:
                      information_field=InformationField.LAST_NAME,
                      content="user"
                 )
+        information_topic = Information(
+            information_field=InformationField.INFORMATION_TOPIC,
+            content=InformationTopic.AIRPORT_TRANSFER
+        )
+        print("extractor: ", message.content)
+        match message.original_content:
+            case DebugTestInput.AVAILABILIY_CHECK:
+                return [guest_count, check_out, accessible, check_in]
+            case DebugTestInput.BOOKING_CANCELLATION:
+                return [last_name, check_in, email]
+            case DebugTestInput.BOOKING_CHECK:
+                return [last_name,check_in, email]
+            case DebugTestInput.BOOKING_REQUEST:
+                return [first_name, last_name, guest_count, check_out, accessible, check_in, breakfast, email]
+            case DebugTestInput.INFORMATION_REQUEST:
+                return [information_topic]
+            case DebugTestInput.BULLSHIT:
+                return []
         
-        return [first_name, last_name, guest_count, check_out, accessible, check_in, breakfast, email]
+        return []

@@ -28,15 +28,15 @@ def create_customer(
             preferred_language=preferred_language
         )
 
-    if customer is None:
-        LOG_MSG.debug(
-            f"Customer {first_name} {last_name} with Email: {email} could not be created")
-    else:
-        database.save_customer(customer=customer)
-        LOG_MSG.debug(
-            f"Customer created: {customer.customer_id}, {customer.full_name}, {customer.email}"
-        )
-
+        if customer is None:
+            LOG_MSG.debug(
+                f"Customer {first_name} {last_name} with Email: {email} could not be created")
+        else:
+            database.save_customer(customer=customer)
+            LOG_MSG.debug(
+                f"Customer created: {customer.customer_id}, {customer.full_name}, {customer.email}"
+            )
+    LOG_MSG.debug(f"Customer identified: {first_name} {last_name} {email} {customer.customer_id}")
     return customer
 
 def get_customer(customer_id: str, database: DatabaseInterface) -> Customer | None:

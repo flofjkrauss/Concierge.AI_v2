@@ -1,5 +1,5 @@
 from typing import Annotated
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -13,6 +13,7 @@ from domain.services.confirm_booking import confirm_booking, get_room
 from domain.services.create_customer import create_customer, get_customer
 from domain.services.get_booking import get_booking, get_booking_by_name
 from domain.services.get_information import get_hotel_address, get_hotel_name
+from domain.value_objects.room_category import RoomCategory
 from observability.log_messages import LOG_MSG
 
 router = APIRouter(
@@ -20,53 +21,75 @@ router = APIRouter(
     tags=["bookings"],
 )
 
+#delete this after development
+from domain.services.find_matching_rooms import find_matching_rooms, MatchResponse
+from utils.connect_database import connect
+DEBUG_MODE = True
+DEBUG_CATEGORY = RoomCategory.FAMILY
+class DebugData:
+    FIRST_NAME: str = "test"
+    LAST_NAME: str = "user"
+    EMAIL: str = "mail@mail.com"
+    PREFERRED_LANGUAGE: str = "de"
 
-@router.get("/{booking_id}")
-def read_booking(
-    booking_id: str,
+
+debug_booking_request: MatchResponse = find_matching_rooms(
+    check_in=date(2028, 10, 10),
+    check_out=date(2028, 10, 20),
+    guest_count=2,
+    breakfast=True,
+    accessible=False,
+    database=connect()
+)
+
+
+@router.get("/booking_by_name")
+def read_booking_by_name(
     database: Annotated[
         DatabaseInterface,
         Depends(get_database),
-    ],
-) -> BookingResponse | None:
-    LOG_MSG.debug(f"Booking object requested for booking: {booking_id}")
-    booking = get_booking(
-        booking_id=booking_id,
-        database=database,
-    )
-    return _response_from_booking(booking=booking, database=database)
+        ],
+    last_name: str | None=None,
+    email: str | None=None,
+    check_in: str | None=None,
+    ) -> BookingResponse | None:
+    if DEBUG_MODE:
+        last_name = DebugData.LAST_NAME
+        email = DebugData.EMAIL
+        check_in = str(debug_booking_request.request.stay_period.check_in)
 
-@router.post("/{booking_id}/cancel")
-def read_booking_to_cancel(
-    booking_id: str,
-    database: Annotated[
-        DatabaseInterface,
-        Depends(get_database),
-    ],
-) -> BookingResponse | None:
-    LOG_MSG.debug(f"Booking cancellation requested for booking: {booking_id}")
-    booking = cancel_booking(
-        booking_id=booking_id,
-        database=database,
-    )
-    return _response_from_booking(booking=booking, database=database)
-
-@router.post("/{booking_id}/cancel_by_name")
-def read_booking_to_cancel_by_name(
-    last_name: str,
-    email: str,
-    check_in: str,
-    database: Annotated[
-        DatabaseInterface,
-        Depends(get_database),
-    ],
-) -> BookingResponse | None:
-    LOG_MSG.debug(f"Booking cancellation requested for booking by name: {last_name}")
-    # debug data
-    #just_name = "user"
-    #just_mail = "mail@mail.com"
-    #just_date = date.fromisoformat("2027-08-08")
+    LOG_MSG.debug(f"Booking object requested for booking: {last_name} {email}")
+    try:
+        normalized_check_in = date.fromisoformat(check_in)
+    except ValueError:
+        LOG_MSG.error(f"Invalid data format received in read_booking_by_name check")
+        return None
     
+    booking = get_booking_by_name(
+        last_name=last_name,
+        email=email,
+        check_in=normalized_check_in,
+        database=database,
+    )
+
+    return _response_from_booking(booking=booking, database=database)
+
+@router.post("/cancel_by_name")
+def read_booking_to_cancel_by_name(
+     database: Annotated[
+        DatabaseInterface,
+        Depends(get_database),
+    ],
+    last_name: str | None=None,
+    email: str | None=None,
+    check_in: str | None=None,
+   
+) -> BookingResponse | None:
+    if DEBUG_MODE:
+        last_name = DebugData.LAST_NAME
+        email = DebugData.EMAIL
+        check_in = str(debug_booking_request.request.stay_period.check_in)
+    LOG_MSG.debug(f"Booking cancellation requested for booking by name: {last_name}")
     check_in_iso = date.fromisoformat(check_in)   
 
     booking = cancel_booking_by_name(
@@ -75,29 +98,39 @@ def read_booking_to_cancel_by_name(
         check_in=check_in_iso,
         database=database,
     )
+
     return _response_from_booking(booking=booking, database=database)
 
 @router.post("/request", response_model=BookingResponse)
 def read_booking_request(
-    booking_request: BookingRequest,
-    room_id: str,
-    first_name: str,
-    last_name: str,
-    email: str,
-    preferred_language: str,
     database: Annotated[
-        DatabaseInterface,
-        Depends(get_database),
-    ],
+            DatabaseInterface,
+            Depends(get_database),
+        ],
+    booking_request: BookingRequest | None=None,
+    room_category: str | None=None,
+    first_name: str | None=None,
+    last_name: str | None=None,
+    email: str | None=None,
+    preferred_language: str | None=None,
+    
 ) -> BookingResponse | None:
+    if DEBUG_MODE:
+        booking_request = debug_booking_request.request
+        room_category = DEBUG_CATEGORY
+        first_name = DebugData.FIRST_NAME
+        last_name = DebugData.LAST_NAME
+        email = DebugData.EMAIL
+        preferred_language = DebugData.PREFERRED_LANGUAGE
     try:
-        LOG_MSG.debug(f"BookingRequest confirmation requested for request: {booking_request.request_id} and room: {room_id}")
-        room = get_room(room_id=room_id, database=database)
-        if room is None:
-            LOG_MSG.debug(f"Room could not be found: {room_id}")
+        LOG_MSG.debug(f"BookingRequest confirmation requested for request: {booking_request.request_id} and room category: {room_category}")
+        try:
+            category = RoomCategory(room_category)
+        except ValueError:
+            LOG_MSG.debug(f"Room category could not be found: {room_category}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Room not found: {room_id}"
+                detail=f"Room category not found: {room_category}"
             )
             
         customer = create_customer(database=database,
@@ -114,7 +147,7 @@ def read_booking_request(
         
         booking = confirm_booking(
             booking_request=booking_request,
-            room=room,
+            room_category=room_category,
             customer=customer,
             database=database
         )
@@ -126,6 +159,47 @@ def read_booking_request(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error)
         ) from error
+
+@router.get("/{booking_id}")
+def read_booking(
+    database: Annotated[
+        DatabaseInterface,
+        Depends(get_database),
+    ],
+    booking_id: str | None=None,
+    
+) -> BookingResponse | None:
+    if DEBUG_MODE:
+        booking_id = debug_booking_request.request.request_id
+
+    LOG_MSG.debug(f"Booking object requested for booking: {booking_id}")
+    booking = get_booking(
+        booking_id=booking_id,
+        database=database,
+    )
+    return _response_from_booking(booking=booking, database=database)
+
+
+
+@router.post("/{booking_id}/cancel")
+def read_booking_to_cancel(
+    database: Annotated[
+        DatabaseInterface,
+        Depends(get_database),
+    ],
+    booking_id: str | None=None,
+    
+) -> BookingResponse | None:
+    if DEBUG_MODE:
+        booking_id = debug_booking_request.request.request_id
+    
+    LOG_MSG.debug(f"Booking cancellation requested for booking: {booking_id}")
+    booking = cancel_booking(
+        booking_id=booking_id,
+        database=database,
+    )
+    return _response_from_booking(booking=booking, database=database)
+
 
 def _response_from_booking(
     booking: Booking | None,
@@ -141,10 +215,11 @@ def _response_from_booking(
         
         hotel_name = get_hotel_name(database=database)
         hotel_address = get_hotel_address(database=database)
+        category = database.get_room(booking.room_id).category
 
         return BookingResponse(
             booking_id=booking.booking_id,
-            customer_id=booking.customer_id,
+            room_category=category,
             guest_name=customer.full_name,
             arrival=booking.stay_period.check_in,
             departure=booking.stay_period.check_out,

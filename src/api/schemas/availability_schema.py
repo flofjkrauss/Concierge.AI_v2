@@ -10,7 +10,6 @@ from domain.entities.room import Room
 class AvailabilityResponse(BaseModel):
     """A Harbour Light Hotel availability response."""
 
-    request_id: str
     rooms: list[RoomResponse] = []
 
     def add_room(self, room: Room) -> None:        

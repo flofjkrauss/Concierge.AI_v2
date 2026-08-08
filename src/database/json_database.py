@@ -304,7 +304,9 @@ class JsonDatabase(DatabaseInterface):
                 if record["customer_id"] == customer.customer_id:
                     record_check_in = date.fromisoformat(record["arrival"])
                     if record_check_in == check_in:
-                        return self._booking_from_record(record)
+                        booking = self._booking_from_record(record)
+                        if booking.status != BookingStatus.CANCELLED:
+                            return booking
     
             return None
         

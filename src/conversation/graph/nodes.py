@@ -36,19 +36,19 @@ from domain.services.cancel_booking import cancel_booking_by_name
 from domain.services.find_matching_rooms import find_matching_rooms
 from domain.services.get_booking import get_booking_by_name
 from domain.services.get_information import get_information
+from domain.services.confirm_booking import confirm_booking
+from domain.services.create_customer import create_customer
 from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.stay_period import StayPeriod
 from domain.entities.booking import Booking
+from domain.entities.customer import Customer
 from domain.value_objects.booking_status import BookingStatus
+from domain.value_objects.room_category import RoomCategory
 
 from observability.log_messages import LOG_MSG
 from observability.utils.to_json import to_jsonable
 
 StateUpdate = dict[str, object]
-BookingCreator = Callable[
-    [Mapping[InformationField, Information], DatabaseInterface],
-    object,
-]
 
 
 class ConversationDomainAdapter(Protocol):
@@ -67,7 +67,6 @@ class DatabaseDomainAdapter:
     """Minimal adapter from collected fields to current domain-service calls."""
 
     database: DatabaseInterface
-    booking_creator: BookingCreator | None = None
 
     def execute(
         self,
@@ -102,12 +101,18 @@ class DatabaseDomainAdapter:
                     check_in=check_in,
                     database=self.database)
             case DomainOperation.CREATE_BOOKING:
-                if self.booking_creator is None:
-                    raise RuntimeError(
-                        "Booking creation requires the repository-specific "
-                        "room-selection adapter. No room must be selected implicitly."
-                    )
-                return self.booking_creator(information, self.database)
+                booking_request = _booking_request_from_information(information)
+                customer = _create_customer_from_information(information)
+                room_category = _required_string(
+                    information,
+                    RoomCategory
+                )
+                return confirm_booking(
+                    booking_request=booking_request,
+                    room_category=room_category,
+                    customer=customer,
+                    database=self.database
+                )
             case DomainOperation.CANCEL_BOOKING:
                 last_name = _required_string(
                     information,
@@ -691,6 +696,26 @@ def _booking_request_from_information(
         accessible_requested=accessible,
     )
 
+def _create_customer_from_information(
+        information: Mapping[InformationField, Information],
+) -> Customer:
+    first_name = _required_string(information, InformationField.FIRST_NAME)
+    last_name = _required_string(information, InformationField.LAST_NAME)
+    email = _required_string(information, InformationField.EMAIL)
+    preferred_language = _required_string(information, InformationField.PREFERRED_LANG)
+    phone = _optional_string(
+        information,
+        InformationField.PHONE,
+        default="0",
+    )
+    return Customer(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        phone=phone,
+        preferred_language=preferred_language
+    )
+
 
 def _required_content(
     information: Mapping[InformationField, Information],
@@ -733,6 +758,19 @@ def _optional_bool(
         return default
     if not isinstance(value.content, bool):
         raise TypeError(f"{field.value} must be a boolean")
+    return value.content
+
+def _optional_string(
+    information: Mapping[InformationField, Information],
+    field: InformationField,
+    *,
+    default: str,
+) -> str:
+    value = information.get(field)
+    if value is None:
+        return default
+    if not isinstance(value.content, str):
+        raise TypeError(f"{field.value} must be a string")
     return value.content
 
 

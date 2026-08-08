@@ -55,7 +55,7 @@ def cancel_booking_by_name(
     if booking.status == BookingStatus.CANCELLED:
         LOG_MSG.debug(
             f"Booking {booking.booking_id} is already cancelled.")
-        return booking
+        return None
 
     booking.status = BookingStatus.CANCELLED
     database.save_booking(booking)

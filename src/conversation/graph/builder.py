@@ -8,7 +8,6 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
 
 from conversation.graph.nodes import (
-    BookingCreator,
     ConversationDomainAdapter,
     DatabaseDomainAdapter,
     nodes_from_settings,
@@ -101,20 +100,16 @@ def build_conversation_graph(
     information_extractor: InformationExtractor,
     user_interaction: UserInteraction,
     checkpointer: BaseCheckpointSaver[str],
-    booking_creator: BookingCreator | None = None,
     domain_adapter: ConversationDomainAdapter | None = None,
 ) -> ConversationGraph:
     """Compile the conversation graph with thread-level in-memory state.
 
     ``domain_adapter`` is primarily a test/customization seam. The default
-    adapter calls the repository's existing domain services. ``booking_creator``
-    is deliberately separate because the current conversation fields do not
-    yet contain the user's selected ``room_id``.
+    adapter calls the repository's existing domain services.
     """
 
     selected_domain_adapter = domain_adapter or DatabaseDomainAdapter(
-        database=database,
-        booking_creator=booking_creator,
+        database=database
     )
     nodes = nodes_from_settings(
         translator=translator,

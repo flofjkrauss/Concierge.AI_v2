@@ -30,7 +30,7 @@ def init(database: DatabaseInterface) -> ConversationController:
         intent_classifier=intent_classifier,
         information_extractor=information_extractor,
         user_interaction=user_interaction,
-        checkpointer=checkpointer,
+        checkpointer=checkpointer
     )
     return ConversationController(
         graph=graph,
