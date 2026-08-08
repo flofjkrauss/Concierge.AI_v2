@@ -11,6 +11,9 @@ from conversation.entities.interaction_response import (
     InformationResponse,
     GreetingResponse,
     AvailabilityResponse,
+    BookingResponse,
+    AskConfirmationResponse,
+    UserOptions
 
 )
 from conversation.entities.message import Message
@@ -61,12 +64,25 @@ class UserInteraction:
 
     def ask_for_data(self, intent: Intent, data: object) -> InteractionResponse:
         text = build(Action.ASK_FOR_DATA, intent=intent, missing_fields=data)
-        return AvailabilityResponse(session_active=True,
+        if intent == Intent.AVAILABILITY_CHECK:
+            return AvailabilityResponse(session_active=True,
+                                        text=text,
+                                        content=data)
+        else:
+            return BookingResponse(session_active=True,
                                     text=text,
                                     content=data)
 
     def ask_for_confirmation(self, intent: Intent, data: object) -> InteractionResponse:
-        return ErrorResponse(text="failed", session_active=False, reason="not yet implemented")
+        options = [
+            UserOptions.CONFIRMED,
+            UserOptions.DECLINED,
+            UserOptions.INTERRUPTED
+        ]
+        text = build(Action.ASK_FOR_CONFIRMATION, intent=intent, missing_fields=[])
+        return AskConfirmationResponse(session_active=True,
+                                text=text,
+                                options=options)
     
     def display_info(self, intent: Intent, data: object) -> InteractionResponse:
         if not isinstance(data, str):
@@ -89,7 +105,11 @@ class UserInteraction:
         return AvailabilityResponse(session_active=True, text=DefaultPhrases.AVAILABLE_ROOM_CATEGORIES, content=content)
     
     def display_booking(self, intent: Intent, data: object) -> InteractionResponse:
-        return ErrorResponse(text="failed", session_active=False, reason="not yet implemented")
+        if not data:
+            return InteractionResponse(text=DefaultPhrases.BOOKING_NOT_FOUND, session_active=True)
+        return BookingResponse(session_active=True,
+                                text=DefaultPhrases.DISPLAY_BOOKING,
+                                content=data)
     
     def display_greeting(self, intent: Intent, data: object) -> GreetingResponse:
         if not isinstance(data, str):
@@ -99,6 +119,6 @@ class UserInteraction:
         return GreetingResponse(text=DefaultPhrases.GREETING, session_active=True, session_id=data)
     
     def ask_intent(self, intent: Intent, data: object) -> InteractionResponse:
-        return ErrorResponse(text="failed", session_active=False, reason="not yet implemented")
+        return InteractionResponse(text=DefaultPhrases.ASK_INTENT, session_active=True)
     
 

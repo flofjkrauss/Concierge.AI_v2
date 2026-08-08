@@ -1,4 +1,5 @@
 from typing import Annotated
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -7,10 +8,10 @@ from api.schemas.booking_schema import BookingResponse
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking
 from domain.entities.booking_request import BookingRequest
-from domain.services.cancel_booking import cancel_booking
+from domain.services.cancel_booking import cancel_booking, cancel_booking_by_name
 from domain.services.confirm_booking import confirm_booking, get_room
 from domain.services.create_customer import create_customer, get_customer
-from domain.services.get_booking import get_booking
+from domain.services.get_booking import get_booking, get_booking_by_name
 from domain.services.get_information import get_hotel_address, get_hotel_name
 from observability.log_messages import LOG_MSG
 
@@ -46,6 +47,32 @@ def read_booking_to_cancel(
     LOG_MSG.debug(f"Booking cancellation requested for booking: {booking_id}")
     booking = cancel_booking(
         booking_id=booking_id,
+        database=database,
+    )
+    return _response_from_booking(booking=booking, database=database)
+
+@router.post("/{booking_id}/cancel_by_name")
+def read_booking_to_cancel_by_name(
+    last_name: str,
+    email: str,
+    check_in: str,
+    database: Annotated[
+        DatabaseInterface,
+        Depends(get_database),
+    ],
+) -> BookingResponse | None:
+    LOG_MSG.debug(f"Booking cancellation requested for booking by name: {last_name}")
+    # debug data
+    #just_name = "user"
+    #just_mail = "mail@mail.com"
+    #just_date = date.fromisoformat("2027-08-08")
+    
+    check_in_iso = date.fromisoformat(check_in)   
+
+    booking = cancel_booking_by_name(
+        last_name=last_name,
+        email=email,
+        check_in=check_in_iso,
         database=database,
     )
     return _response_from_booking(booking=booking, database=database)

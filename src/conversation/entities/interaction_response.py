@@ -1,12 +1,20 @@
 """conversation entity."""
 from dataclasses import dataclass
+from enum import StrEnum
 
 from api.schemas.availability_schema import (
     AvailabilityResponse as api_availability_response,
 )
-from conversation.value_object.default_phrases import DefaultPhrases
-from domain.value_objects.information_topic import InformationTopic
+from api.schemas.booking_schema import BookingResponse as api_booking_response
 
+class UserOptions(StrEnum):
+    """Result of interpreting a message while confirmation is pending."""
+
+    CONFIRMED = "confirmed"
+    DECLINED = "declined"
+    CHANGED = "changed"
+    INTERRUPTED = "interrupted"
+    UNCLEAR = "unclear"
 
 @dataclass(slots=True)
 class InteractionResponse:
@@ -38,10 +46,15 @@ class AvailabilityResponse(InteractionResponse):
 @dataclass(slots=True)
 class BookingResponse(InteractionResponse):
     """booking request response"""
-    content: api_availability_response
+    content: api_booking_response
 
 @dataclass(slots=True)
 class GreetingResponse(InteractionResponse):
     """booking request response"""
     session_id: str
+
+@dataclass(slots=True)
+class AskConfirmationResponse(InteractionResponse):
+    """ ask for confirmation response """
+    options: list[UserOptions]
     

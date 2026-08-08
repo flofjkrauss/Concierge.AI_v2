@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from api.dependencies import get_database
-from api.schemas.availability_schema import AvailabilityResponse, RoomResponse
+from api.schemas.availability_schema import AvailabilityResponse
 from database.interface import DatabaseInterface
 from domain.entities.booking_request import BookingRequest
 from domain.services.find_matching_rooms import find_matching_rooms

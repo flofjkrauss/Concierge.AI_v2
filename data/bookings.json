@@ -104,7 +104,7 @@
       "breakfast": true,
       "total_price": "360",
       "currency": "USD",
-      "status": "pending",
+      "status": "confirmed",
       "booked_at": "2026-07-14T09:10:00-04:00",
       "cancelled_at": null
     },
@@ -122,6 +122,22 @@
       "status": "cancelled",
       "booked_at": "2026-07-22T18:40:00-04:00",
       "cancelled_at": "2026-07-28T10:25:00-04:00"
+    },
+    {
+      "booking_id": "20309383-9011-4811-b198-807445c44e9f",
+      "customer_id": "022af0f1-5cb8-47be-a835-7426a9126c16",
+      "room_id": "room-101",
+      "guest_name": "test user",
+      "arrival": "2027-08-08",
+      "departure": "2027-08-11",
+      "guests": 1,
+      "breakfast": false,
+      "accessible_requested": false,
+      "total_price": "270",
+      "currency": "USD",
+      "status": "confirmed",
+      "booked_at": "2026-08-08T08:07:56.117752+00:00",
+      "cancelled_at": "2026-08-08T08:32:20.563454+00:00"
     }
   ]
 }

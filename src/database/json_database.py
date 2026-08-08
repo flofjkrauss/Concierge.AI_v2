@@ -284,6 +284,31 @@ class JsonDatabase(DatabaseInterface):
             is_bookable=bool(record["in_service"]),
         )
 
+    def get_booking_by_name(self, last_name: str, email: str, check_in: date):
+        """Return the booking with the given last_name email combination."""
+
+        with self._lock:
+            customer_data = self._read_json(self._customers_path)
+            data = self._read_json(self._bookings_path)
+
+            customer = ""
+            for record in customer_data["customers"]:
+                if record["email"] == email and record["last_name"] == last_name:
+                    customer = self._customer_from_record(record=record)
+                    break
+            
+            if customer == "":
+                return None
+
+            for record in data["bookings"]:
+                if record["customer_id"] == customer.customer_id:
+                    record_check_in = date.fromisoformat(record["arrival"])
+                    if record_check_in == check_in:
+                        return self._booking_from_record(record)
+    
+            return None
+        
+
     @staticmethod
     def _booking_from_record(
         record: dict[str, Any],

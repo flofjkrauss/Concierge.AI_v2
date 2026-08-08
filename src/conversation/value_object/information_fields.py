@@ -14,5 +14,7 @@ class InformationField(StrEnum):
     INFORMATION_TOPIC = "information_topic"
     PREFERRED_LANG = "preferred_language"
     PHONE = "phone"
+    CONFIRMATION = "confirmation"
+    REJECTION = "rejection"
 
 

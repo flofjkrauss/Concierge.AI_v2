@@ -63,12 +63,14 @@ class ConversationController:
             return self._user_interaction.send_error_msg(
                 reason="Session is not active",
             )
+        
         result = self._graph.invoke(
             ConversationInput(incoming_message=message),
             self._config(session_id),
         )
         LOG_MSG.debug(f"Message processed: {result}")
         return self._response_from(result)
+
 
     @staticmethod
     def _config(session_id: str) -> dict[str, object]:

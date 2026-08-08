@@ -22,11 +22,11 @@ class InformationExtractor:
         )
         email = Information(
                     information_field=InformationField.EMAIL,
-                    content="thedeadlyprotector@venom.all"
+                    content="mail@mail.com"
                 )
         check_in = Information(
                     information_field=InformationField.CHECK_IN,
-                    content=date(2026, 10, 10)
+                    content=date(2027, 8, 8)
                 )
         check_out = Information(
                             information_field=InformationField.CHECK_OUT,
@@ -63,7 +63,7 @@ class InformationExtractor:
                 )
         last_name = Information(
                      information_field=InformationField.LAST_NAME,
-                     content="WeAre"
+                     content="user"
                 )
         
-        return [first_name, last_name, email, guest_count, check_in, check_out, accessible]
+        return [first_name, last_name, guest_count, check_out, accessible, check_in, breakfast, email]

@@ -32,9 +32,9 @@ from conversation.value_object.intent_information_mapping import (
 )
 from database.interface import DatabaseInterface
 from domain.entities.booking_request import BookingRequest
-from domain.services.cancel_booking import cancel_booking
+from domain.services.cancel_booking import cancel_booking_by_name
 from domain.services.find_matching_rooms import find_matching_rooms
-from domain.services.get_booking import get_booking
+from domain.services.get_booking import get_booking_by_name
 from domain.services.get_information import get_information
 from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.stay_period import StayPeriod
@@ -81,11 +81,23 @@ class DatabaseDomainAdapter:
                     database=self.database,
                 )
             case DomainOperation.GET_BOOKING:
-                booking_id = _required_string(
+                last_name = _required_string(
                     information,
-                    InformationField.BOOKING_ID,
+                    InformationField.LAST_NAME
                 )
-                return get_booking(booking_id=booking_id, database=self.database)
+                email = _required_string(
+                    information,
+                    InformationField.EMAIL
+                )
+                check_in = _required_date(
+                    information,
+                    InformationField.CHECK_IN
+                )
+                return get_booking_by_name(
+                    last_name=last_name,
+                    email=email,
+                    check_in=check_in,
+                    database=self.database)
             case DomainOperation.CREATE_BOOKING:
                 if self.booking_creator is None:
                     raise RuntimeError(
@@ -94,12 +106,22 @@ class DatabaseDomainAdapter:
                     )
                 return self.booking_creator(information, self.database)
             case DomainOperation.CANCEL_BOOKING:
-                booking_id = _required_string(
+                last_name = _required_string(
                     information,
-                    InformationField.BOOKING_ID,
+                    InformationField.LAST_NAME
                 )
-                return cancel_booking(
-                    booking_id=booking_id,
+                email = _required_string(
+                    information,
+                    InformationField.EMAIL
+                )
+                check_in = _required_date(
+                    information,
+                    InformationField.CHECK_IN
+                )
+                return cancel_booking_by_name(
+                    last_name=last_name,
+                    email=email,
+                    check_in=check_in,
                     database=self.database,
                 )
             case DomainOperation.GET_INFORMATION:
@@ -407,6 +429,7 @@ class ConversationNodes:
             Intent.AVAILABILITY_CHECK: DomainOperation.FIND_AVAILABILITY,
             Intent.BOOKING_CHECK: DomainOperation.GET_BOOKING,
             Intent.INFORMATION_REQUEST: DomainOperation.GET_INFORMATION,
+            Intent.BOOKING_CANCELLATION: DomainOperation.GET_BOOKING,
         }
         operation = operation_by_intent.get(current_intent)
         if operation is not None:
@@ -424,7 +447,7 @@ class ConversationNodes:
                 "expected_interaction": expected,
                 "last_intent_fulfilled": False,
             }
-
+        """
         if current_intent == Intent.BOOKING_CANCELLATION:
             expected = ExpectedInteraction(
                 kind=ExpectedInteractionKind.CANCELLATION_CONFIRMATION,
@@ -437,6 +460,7 @@ class ConversationNodes:
                 "expected_interaction": expected,
                 "last_intent_fulfilled": False,
             }
+        """
 
         return {"action": Action.ASK_INTENT, "domain_data": None}
 
@@ -459,6 +483,31 @@ class ConversationNodes:
                 "response": response,
                 "response_in_domain_language": response.text,
                 "session_active": response.session_active,
+                "last_intent_fulfilled": False,
+            }
+        
+        if (
+            operation == DomainOperation.GET_BOOKING
+            and state.get("current_intent") == Intent.BOOKING_CANCELLATION
+        ):
+            if result is None:
+                return {
+                    "domain_operation": None,
+                    "domain_data": None,
+                    "action": Action.DISPLAY_BOOKING,
+                    "last_intent_fulfilled": False,
+                }
+
+            expected = ExpectedInteraction(
+                kind=ExpectedInteractionKind.CANCELLATION_CONFIRMATION,
+                intent=Intent.BOOKING_CANCELLATION,
+                operation=DomainOperation.CANCEL_BOOKING,
+            )
+            return {
+                "domain_operation": None,
+                "domain_data": result,
+                "action": Action.ASK_FOR_CONFIRMATION,
+                "expected_interaction": expected,
                 "last_intent_fulfilled": False,
             }
 
