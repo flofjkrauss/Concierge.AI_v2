@@ -135,7 +135,7 @@
       "accessible_requested": false,
       "total_price": "270",
       "currency": "USD",
-      "status": "confirmed",
+      "status": "cancelled",
       "booked_at": "2026-08-08T08:07:56.117752+00:00",
       "cancelled_at": "2026-08-08T08:32:20.563454+00:00"
     }

@@ -38,6 +38,9 @@ from domain.services.get_booking import get_booking_by_name
 from domain.services.get_information import get_information
 from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.stay_period import StayPeriod
+from domain.entities.booking import Booking
+from domain.value_objects.booking_status import BookingStatus
+
 from observability.log_messages import LOG_MSG
 from observability.utils.to_json import to_jsonable
 
@@ -270,10 +273,10 @@ class ConversationNodes:
     def extract_information(self, state: ConversationState) -> StateUpdate:
         """Extract information on every turn, independently of intent."""
 
-        model_message = _contextual_model_message(state, self.domain_language)
+        message = _required_message(state, "translated_message")
         return {
             "extracted_information": self.information_extractor.extract(
-                message=model_message,
+                message=message,
             )
         }
 
@@ -496,6 +499,15 @@ class ConversationNodes:
                     "domain_data": None,
                     "action": Action.DISPLAY_BOOKING,
                     "last_intent_fulfilled": False,
+                }
+
+            if isinstance(result, Booking) and result.status == BookingStatus.CANCELLED:
+                return {
+                    "domain_operation": None,
+                    "domain_data": result,
+                    "action": Action.DISPLAY_BOOKING,
+                    "expected_interaction": None,
+                    "last_intent_fulfilled": True,
                 }
 
             expected = ExpectedInteraction(

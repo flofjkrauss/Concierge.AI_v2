@@ -8,4 +8,4 @@ class IntentClassifier:
         """try to determine which user intent is behind the given message"""
         # place AI modules here
         # do some dark magic
-        return Intent.BOOKING_CHECK
+        return Intent.BOOKING_CANCELLATION

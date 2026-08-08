@@ -33,6 +33,7 @@ class DefaultPhrases(StrEnum):
     DISPLAY_BOOKING = "Your booking:"
     BOOKING_NOT_FOUND = "I could not find any booking that matches the provided informations."
     REPEAT_ASK_CONFIRMATION = "I am sorry, I was not able to understand you. Did you confirm the last request?"
+    NEED_ANYTHNG_ELSE = "Your request has been processed. Anything else I can help you out with?"
 
 
 

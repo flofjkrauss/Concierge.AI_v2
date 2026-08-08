@@ -7,6 +7,7 @@ from conversation.value_object.information_fields import InformationField
 from domain.value_objects.information_topic import InformationTopic
 
 
+
 class InformationExtractor:
 
     def extract(self, message: Message) -> list[Information]:
@@ -14,6 +15,8 @@ class InformationExtractor:
 
         # TODO: apply module for intent extraction here
         # do some dark magic again
+        if message.content == "yes" or message.content == "no":
+            return []
 
         # the following is just for testing and has to be remained later
         first_name = Information(
