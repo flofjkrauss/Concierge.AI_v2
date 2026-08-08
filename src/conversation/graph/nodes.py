@@ -149,7 +149,8 @@ class ConversationNodes:
             if session_id is None or not session_id.strip():
                 raise ValueError("A new conversation requires a session_id")
 
-            response = self.user_interaction.send_session_id(session_id=session_id)
+            init_intent = Intent.CONVERSATION_INITIATION
+            response = self.user_interaction.display_greeting(intent=init_intent, data=session_id)
             updates.update(
                 {
                     "initialized": True,
@@ -157,7 +158,7 @@ class ConversationNodes:
                     "language": state.get("language"),
                     "message_history": [],
                     "collected_information": {},
-                    "current_intent": Intent.CONVERSATION_INITIATION,
+                    "current_intent": init_intent,
                     "last_intent_fulfilled": False,
                     "missing_fields": [],
                     "unknown_counter": 0,
@@ -196,6 +197,7 @@ class ConversationNodes:
 
         updates["parsed_message"] = parsed_message
         return updates
+
 
     def translate_input(self, state: ConversationState) -> StateUpdate:
         """Detect the session language once and translate input to English."""

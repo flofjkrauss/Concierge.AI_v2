@@ -25,16 +25,11 @@ def read_availability(
 ) -> AvailabilityResponse:
     LOG_MSG.debug(f"Incoming request {booking_request}")
     rooms = find_matching_rooms(booking_request=booking_request, database=database)
+    
     response = AvailabilityResponse(
         request_id=booking_request.request_id,
-        rooms=[]
     )
     for room in rooms:
-        response.rooms.append(RoomResponse(
-            room_id=room.room_id,
-            category=room.category,
-            max_occupancy=room.max_occupancy,
-            price_per_night=room.price_per_night
-        ))
+        response.add_room(room)
 
     return response

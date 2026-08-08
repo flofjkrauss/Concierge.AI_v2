@@ -4,9 +4,11 @@ from datetime import date
 from conversation.entities.information import Information
 from conversation.entities.message import Message
 from conversation.value_object.information_fields import InformationField
+from domain.value_objects.information_topic import InformationTopic
 
 
 class InformationExtractor:
+
     def extract(self, message: Message) -> list[Information]:
         """try to extract information fields from given user message"""
 
@@ -26,4 +28,42 @@ class InformationExtractor:
                     information_field=InformationField.CHECK_IN,
                     content=date(2026, 10, 10)
                 )
-        return [first_name, email, check_in]
+        check_out = Information(
+                            information_field=InformationField.CHECK_OUT,
+                            content=date(2026, 10, 20)
+                        )
+
+        guest_count = Information(
+             information_field=InformationField.GUEST_COUNT,
+             content=2
+        )
+        breakfast = Information(
+                     information_field=InformationField.BREAKFAST,
+                     content=True
+                )
+        accessible = Information(
+                     information_field=InformationField.ACCESSIBLE,
+                     content=False
+                )
+        booking_id = Information(
+                     information_field=InformationField.BOOKING_ID,
+                     content="none"
+                )
+        information_topic = Information(
+                     information_field=InformationField.INFORMATION_TOPIC,
+                     content=InformationTopic.WIFI
+                )
+        preferred_language = Information(
+                     information_field=InformationField.PREFERRED_LANG,
+                     content="et"
+                )
+        phone = Information(
+                     information_field=InformationField.PHONE,
+                     content="i got no phone"
+                )
+        last_name = Information(
+                     information_field=InformationField.LAST_NAME,
+                     content="WeAre"
+                )
+        
+        return [first_name, last_name, email, guest_count, check_in, check_out, accessible]

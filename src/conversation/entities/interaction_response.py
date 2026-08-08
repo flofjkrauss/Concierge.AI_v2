@@ -29,7 +29,6 @@ class ErrorResponse(InteractionResponse):
 @dataclass(slots=True)
 class InformationResponse(InteractionResponse):
     """information request response"""
-    topic: InformationTopic
 
 @dataclass(slots=True)
 class AvailabilityResponse(InteractionResponse):
@@ -44,4 +43,5 @@ class BookingResponse(InteractionResponse):
 @dataclass(slots=True)
 class GreetingResponse(InteractionResponse):
     """booking request response"""
-    text: str = DefaultPhrases.GREETING
+    session_id: str
+    
