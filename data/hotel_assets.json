@@ -175,46 +175,6 @@
       "price_per_night": "120",
       "max_occupancy": 4,
       "in_service": true
-    },
-    {
-      "room_id": "room-207",
-      "number": "207",
-      "floor": 2,
-      "category_id": "family",
-      "accessible": false,
-      "price_per_night": "120",
-      "max_occupancy": 4,
-      "in_service": true
-    },
-    {
-      "room_id": "room-208",
-      "number": "208",
-      "floor": 2,
-      "category_id": "family",
-      "accessible": false,
-      "price_per_night": "120",
-      "max_occupancy": 4,
-      "in_service": true
-    },
-    {
-      "room_id": "room-209",
-      "number": "209",
-      "floor": 2,
-      "category_id": "family",
-      "accessible": false,
-      "price_per_night": "120",
-      "max_occupancy": 4,
-      "in_service": true
-    },
-    {
-      "room_id": "room-210",
-      "number": "210",
-      "floor": 2,
-      "category_id": "family",
-      "accessible": false,
-      "price_per_night": "120",
-      "max_occupancy": 4,
-      "in_service": true
     }
   ]
 }

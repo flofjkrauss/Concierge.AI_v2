@@ -1,8 +1,10 @@
 """Service for cancelling a booking."""
 
+from datetime import date
+
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking
-from domain.services.get_booking import get_booking
+from domain.services.get_booking import get_booking, get_booking_by_name
 from domain.value_objects.booking_status import BookingStatus
 from observability import LOG_MSG
 
@@ -25,6 +27,36 @@ def cancel_booking(
         LOG_MSG.debug(
             f"Booking {booking.booking_id} is already cancelled.")
         return booking
+
+    booking.status = BookingStatus.CANCELLED
+    database.save_booking(booking)
+
+    LOG_MSG.debug(
+        f"Booking {booking.booking_id} was cancelled.")
+
+    return booking
+
+def cancel_booking_by_name(
+        last_name: str,
+        email: str,
+        check_in: date,
+        database: DatabaseInterface
+) -> Booking | None:
+     
+    booking = get_booking_by_name(
+        last_name=last_name,
+        email=email,
+        check_in=check_in,
+        database=database
+    )
+
+    if booking is None:
+        return None
+
+    if booking.status == BookingStatus.CANCELLED:
+        LOG_MSG.debug(
+            f"Booking {booking.booking_id} is already cancelled.")
+        return None
 
     booking.status = BookingStatus.CANCELLED
     database.save_booking(booking)

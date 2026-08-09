@@ -1,6 +1,7 @@
 """Generic interface for application data access."""
 
 from abc import ABC, abstractmethod
+from datetime import date
 
 from domain.entities.booking import Booking
 from domain.entities.customer import Customer
@@ -63,3 +64,11 @@ class DatabaseInterface(ABC):
     @abstractmethod
     def get_hotel_address(self) -> str:
         """Return hotel address"""
+
+    @abstractmethod
+    def get_booking_by_name(self, last_name: str, email: str, check_in: date) -> Booking | None:
+        """Return a booking by last_name and email combination"""
+
+    @abstractmethod
+    def mail_is_in_use(self, email: str) -> bool:
+        """ Return if a mail address is already registered by any customer"""

@@ -14,7 +14,6 @@ from domain.entities.room import Room
 from domain.value_objects.booking_status import BookingStatus
 from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.money import Money
-from domain.value_objects.room_category import RoomCategory
 from domain.value_objects.stay_period import StayPeriod
 
 
@@ -274,7 +273,7 @@ class JsonDatabase(DatabaseInterface):
             room_id=record["room_id"],
             room_number=record["number"],
             floor=record["floor"],
-            category=RoomCategory(record["category_id"]),
+            category=record["category_id"],
             max_occupancy=int(record["max_occupancy"]),
             price_per_night=Money(
                 amount=Decimal(record["price_per_night"]),
@@ -283,6 +282,42 @@ class JsonDatabase(DatabaseInterface):
             is_accessible=bool(record["accessible"]),
             is_bookable=bool(record["in_service"]),
         )
+
+    def get_booking_by_name(self, last_name: str, email: str, check_in: date) -> Booking | None:
+        """Return the booking with the given last_name email combination."""
+
+        with self._lock:
+            customer_data = self._read_json(self._customers_path)
+            data = self._read_json(self._bookings_path)
+
+            for record in customer_data["customers"]:
+                if record["email"] == email and record["last_name"] == last_name:
+                    customer = self._customer_from_record(record=record)
+                    break
+            
+            if not customer:
+                return None
+
+            for record in data["bookings"]:
+                if record["customer_id"] == customer.customer_id:
+                    record_check_in = date.fromisoformat(record["arrival"])
+                    if record_check_in == check_in:
+                        booking = self._booking_from_record(record)
+                        if booking.status != BookingStatus.CANCELLED:
+                            return booking
+    
+            return None
+
+    def mail_is_in_use(self, email: str) -> bool:
+        """check if mail address is already in use"""
+        with self._lock:
+            data = self._read_json(self._customers_path)
+            for record in data["customers"]:
+                if record["email"] == email:
+                    return True
+            
+            return False
+        
 
     @staticmethod
     def _booking_from_record(

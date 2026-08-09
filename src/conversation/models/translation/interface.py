@@ -19,7 +19,7 @@ class TranslatorInterface(ABC):
 class NoneTranslator(TranslatorInterface):
     """Dummy for translator modules. Always determines language as 'en' and gives the exact same text back"""
     def translate(self, text: Message, target_lang: str) -> Message:
-        return text
+        return Message(content=f"{text.content}", original_content=text.original_content)
 
     def determine(self, text: Message) -> str:
-        return "en"
+        return "de"

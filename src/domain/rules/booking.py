@@ -5,16 +5,22 @@ from collections.abc import Collection
 from domain.entities.booking import Booking
 from domain.entities.booking_request import BookingRequest
 from domain.entities.room import Room
+from domain.value_objects.room_category import RoomCategory
 from observability import LOG_MSG
 
 
 def room_matches_booking_request(
     room: Room,
+    category: RoomCategory,
     booking_request: BookingRequest,
     existing_bookings: Collection[Booking],
 ) -> bool:
     """Return whether a room satisfies all requirements of a booking request."""
-
+    if category != "":  # noqa: SIM102
+        if room.category != category:
+            LOG_MSG.debug(f"Room Room {room.room_id} does not match booking request {booking_request.request_id} because it has a different category.")
+            return False
+    
     if not room.is_bookable:
         LOG_MSG.debug(
             f"Room {room.room_id} does not match booking request {booking_request.request_id} because the room is not bookable.")

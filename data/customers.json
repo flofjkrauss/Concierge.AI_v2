@@ -46,6 +46,33 @@
       "phone": "+49-30-5550-0105",
       "preferred_language": "de",
       "created_at": "2026-04-30T13:50:00-04:00"
+    },
+    {
+      "customer_id": "022af0f1-5cb8-47be-a835-7426a9126c16",
+      "first_name": "test",
+      "last_name": "user",
+      "email": "mail@mail.com",
+      "phone": "",
+      "preferred_language": "de",
+      "created_at": "2026-08-08T08:07:34.250482+00:00"
+    },
+    {
+      "customer_id": "261eda4b-a3b1-4bfd-a0b3-057704cb5187",
+      "first_name": "Venom",
+      "last_name": "user",
+      "email": "venom@mail.com",
+      "phone": "",
+      "preferred_language": "et",
+      "created_at": "2026-08-09T00:58:05.694867+00:00"
+    },
+    {
+      "customer_id": "be12ebb0-7297-4df9-8910-efc28549bec3",
+      "first_name": "Venom",
+      "last_name": "user",
+      "email": "venom@world-dominion.com",
+      "phone": "i got no phone",
+      "preferred_language": "et",
+      "created_at": "2026-08-09T01:25:58.293752+00:00"
     }
   ]
 }

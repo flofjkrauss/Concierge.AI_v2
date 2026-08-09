@@ -18,9 +18,13 @@ class IntentInformationMapper:
                 retval.append(InformationField.GUEST_COUNT)
                 retval.append(InformationField.ACCESSIBLE)
             case Intent.BOOKING_CHECK:
-                retval.append(InformationField.BOOKING_ID)
+                retval.append(InformationField.LAST_NAME)
+                retval.append(InformationField.EMAIL)
+                retval.append(InformationField.CHECK_IN)
             case Intent.BOOKING_CANCELLATION:
-                retval.append(InformationField.BOOKING_ID)
+                retval.append(InformationField.LAST_NAME)
+                retval.append(InformationField.EMAIL)
+                retval.append(InformationField.CHECK_IN)
             case Intent.BOOKING_REQUEST:
                 retval.append(InformationField.CHECK_IN)
                 retval.append(InformationField.CHECK_OUT)
@@ -30,6 +34,8 @@ class IntentInformationMapper:
                 retval.append(InformationField.FIRST_NAME)
                 retval.append(InformationField.LAST_NAME)
                 retval.append(InformationField.EMAIL)
+                retval.append(InformationField.ROOM_CATEGORY)
+                retval.append(InformationField.PHONE)
             case Intent.INFORMATION_REQUEST:
                 retval.append(InformationField.INFORMATION_TOPIC)
             case Intent.CONVERSATION_INITIATION:

@@ -14,5 +14,6 @@ class InformationField(StrEnum):
     INFORMATION_TOPIC = "information_topic"
     PREFERRED_LANG = "preferred_language"
     PHONE = "phone"
+    ROOM_CATEGORY = "room_category"
 
 

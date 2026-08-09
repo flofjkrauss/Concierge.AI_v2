@@ -1,6 +1,5 @@
 """Service for confirming a booking request."""
 
-from uuid import uuid4
 
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking
@@ -10,26 +9,34 @@ from domain.entities.room import Room
 from domain.rules.booking import room_matches_booking_request
 from domain.services.calculate_price import calculate_price
 from domain.value_objects.booking_status import BookingStatus
+from domain.value_objects.room_category import RoomCategory
 from observability import LOG_MSG
 
 
 def confirm_booking(
     booking_request: BookingRequest,
-    room: Room,
+    room_category: RoomCategory,
     customer: Customer,
     database: DatabaseInterface,
 ) -> Booking:
     """Create and persist a confirmed booking."""
 
     existing_bookings = database.get_bookings()
-
-    if not room_matches_booking_request(
-        room=room,
-        booking_request=booking_request,
-        existing_bookings=existing_bookings,
-    ):
+    matching_room: Room
+    for room in database.get_rooms():
+        if not room_matches_booking_request(
+            room=room,
+            category=room_category,
+            booking_request=booking_request,
+            existing_bookings=existing_bookings,
+        ):
+            continue
+        else:
+            matching_room = room
+            break
+    else:
         raise ValueError(
-            f"Room {room.room_id} is no longer available for booking request {booking_request.request_id}"
+            f"Room category {room_category} is no longer available for booking request {booking_request.request_id}"
         )
 
     if customer is None:
@@ -39,14 +46,15 @@ def confirm_booking(
 
     total_price = calculate_price(
         booking_request=booking_request,
-        room=room,
+        room=matching_room,
         database=database,
     )
 
+
     booking = Booking(
-        booking_id=str(uuid4()),
+        booking_id=booking_request.request_id,
         customer_id=customer.customer_id,
-        room_id=room.room_id,
+        room_id=matching_room.room_id,
         stay_period=booking_request.stay_period,
         guest_count=booking_request.guest_count,
         total_price=total_price,

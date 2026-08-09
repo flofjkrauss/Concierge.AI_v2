@@ -48,4 +48,6 @@ INFORMATION_VALIDATORS: dict[
     InformationField.BOOKING_ID: is_non_empty_string,
     InformationField.PREFERRED_LANG: is_non_empty_string,
     InformationField.PHONE: is_non_empty_string,
+    InformationField.INFORMATION_TOPIC: is_non_empty_string,
+    InformationField.ROOM_CATEGORY: is_non_empty_string
 }

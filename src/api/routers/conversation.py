@@ -12,7 +12,7 @@ router = APIRouter(
 )
 
 
-@router.post("/")
+@router.post("/", response_model=None)
 def initialize(
     controller: Annotated[
         ConversationController,
