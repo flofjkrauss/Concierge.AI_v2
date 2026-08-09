@@ -1,16 +1,15 @@
 """Service for confirming a booking request."""
 
-from uuid import uuid4
 
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking
 from domain.entities.booking_request import BookingRequest
 from domain.entities.customer import Customer
-from domain.value_objects.room_category import RoomCategory
 from domain.entities.room import Room
 from domain.rules.booking import room_matches_booking_request
 from domain.services.calculate_price import calculate_price
 from domain.value_objects.booking_status import BookingStatus
+from domain.value_objects.room_category import RoomCategory
 from observability import LOG_MSG
 
 

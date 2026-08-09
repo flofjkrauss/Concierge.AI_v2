@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from datetime import date
 from typing import Literal, Protocol, assert_never
-from uuid import uuid4
 
 from configuration.application import ApplicationSettings
 from conversation.entities.information import Information
@@ -31,20 +30,16 @@ from conversation.value_object.intent_information_mapping import (
     IntentInformationMapper,
 )
 from database.interface import DatabaseInterface
-from domain.entities.booking_request import BookingRequest
+from domain.entities.booking import Booking
+from domain.entities.customer import Customer
 from domain.services.cancel_booking import cancel_booking_by_name
+from domain.services.confirm_booking import confirm_booking
+from domain.services.create_customer import create_customer
 from domain.services.find_matching_rooms import find_matching_rooms
 from domain.services.get_booking import get_booking_by_name
 from domain.services.get_information import get_information
-from domain.services.confirm_booking import confirm_booking
-from domain.services.create_customer import create_customer
-from domain.value_objects.information_topic import InformationTopic
-from domain.value_objects.stay_period import StayPeriod
-from domain.entities.booking import Booking
-from domain.entities.customer import Customer
 from domain.value_objects.booking_status import BookingStatus
-from domain.value_objects.room_category import RoomCategory
-
+from domain.value_objects.information_topic import InformationTopic
 from observability.log_messages import LOG_MSG
 from observability.utils.to_json import to_jsonable
 
@@ -77,9 +72,13 @@ class DatabaseDomainAdapter:
 
         match operation:
             case DomainOperation.FIND_AVAILABILITY:
-                request = _booking_request_from_information(information)
+                (check_in, check_out, guest_count, accessible, breakfast) = _booking_request_tuple_from_information(information)
                 return find_matching_rooms(
-                    booking_request=request,
+                    check_in=check_in,
+                    check_out=check_out,
+                    guest_count=guest_count,
+                    breakfast=breakfast,
+                    accessible=accessible,
                     database=self.database,
                 )
             case DomainOperation.GET_BOOKING:
@@ -101,18 +100,28 @@ class DatabaseDomainAdapter:
                     check_in=check_in,
                     database=self.database)
             case DomainOperation.CREATE_BOOKING:
-                booking_request = _booking_request_from_information(information)
-                customer = _create_customer_from_information(information)
                 room_category = _required_string(
                     information,
-                    RoomCategory
+                    InformationField.ROOM_CATEGORY
                 )
-                return confirm_booking(
-                    booking_request=booking_request,
-                    room_category=room_category,
-                    customer=customer,
-                    database=self.database
+                (check_in, check_out, guest_count, accessible, breakfast) = _booking_request_tuple_from_information(information)
+                match_response =  find_matching_rooms(
+                    check_in=check_in,
+                    check_out=check_out,
+                    guest_count=guest_count,
+                    breakfast=breakfast,
+                    accessible=accessible,
+                    database=self.database,
+                    room_category=room_category
                 )
+                if len(match_response.rooms) > 0:
+                    customer = _create_customer_from_information(information, database=self.database)
+                    return confirm_booking(
+                        booking_request=match_response.request,
+                        room_category=room_category,
+                        customer=customer,
+                        database=self.database
+                    )
             case DomainOperation.CANCEL_BOOKING:
                 last_name = _required_string(
                     information,
@@ -676,9 +685,9 @@ def _confirmation_decision(content: str) -> bool | None:
     return None
 
 
-def _booking_request_from_information(
+def _booking_request_tuple_from_information(
     information: Mapping[InformationField, Information],
-) -> BookingRequest:
+) -> tuple[date, date, int, bool, bool | None]:
     check_in = _required_date(information, InformationField.CHECK_IN)
     check_out = _required_date(information, InformationField.CHECK_OUT)
     guest_count = _required_int(information, InformationField.GUEST_COUNT)
@@ -688,16 +697,11 @@ def _booking_request_from_information(
         InformationField.BREAKFAST,
         default=False,
     )
-    return BookingRequest(
-        request_id=str(uuid4()),
-        stay_period=StayPeriod(check_in=check_in, check_out=check_out),
-        guest_count=guest_count,
-        breakfast_included=breakfast,
-        accessible_requested=accessible,
-    )
+    return (check_in, check_out, guest_count, accessible, breakfast)
 
 def _create_customer_from_information(
         information: Mapping[InformationField, Information],
+        database: DatabaseInterface
 ) -> Customer:
     first_name = _required_string(information, InformationField.FIRST_NAME)
     last_name = _required_string(information, InformationField.LAST_NAME)
@@ -708,13 +712,17 @@ def _create_customer_from_information(
         InformationField.PHONE,
         default="0",
     )
-    return Customer(
+    customer = create_customer(
         first_name=first_name,
         last_name=last_name,
         email=email,
         phone=phone,
-        preferred_language=preferred_language
+        preferred_language=preferred_language,
+        database=database
     )
+    if not isinstance(customer, Customer):
+        raise TypeError("error in _create_customer_from_information")
+    return customer
 
 
 def _required_content(

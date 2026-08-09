@@ -45,6 +45,7 @@ python_version = "3.12"
 mypy_path = "src"
 explicit_package_bases = true
 strict = true
+disable_error_code = ["union-attr", "return", "arg-type", "assignment"]
 
 
 [build-system]

@@ -1,14 +1,14 @@
-from typing import Annotated
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
 from api.dependencies import get_database
+from api.routers.bookings import DEBUG_MODE, debug_booking_request
 from api.schemas.availability_schema import AvailabilityResponse
 from database.interface import DatabaseInterface
-from domain.services.find_matching_rooms import find_matching_rooms, MatchResponse
+from domain.services.find_matching_rooms import find_matching_rooms
 from observability.log_messages import LOG_MSG
-from api.routers.bookings import DEBUG_MODE, debug_booking_request
 
 router = APIRouter(
     prefix="/api/availability",
@@ -22,11 +22,11 @@ def read_availability(
             DatabaseInterface,
             Depends(get_database),
         ],
-    check_in: str | None=None,
-    check_out: str | None=None,
-    guest_count: int | None=None,
-    breakfast: bool | None=None,
-    accessible: bool | None=None,
+    check_in: str,
+    check_out: str,
+    guest_count: int,
+    breakfast: bool,
+    accessible: bool,
     
 ) -> AvailabilityResponse:
 
@@ -43,7 +43,7 @@ def read_availability(
         normalized_breakfast = bool(breakfast)
         normalized_accesible = bool(accessible)
     except ValueError:
-        LOG_MSG.error(f"Invalid data format received in availability check")
+        LOG_MSG.error("Invalid data format received in availability check")
         return AvailabilityResponse()
     
     match_response = find_matching_rooms(
@@ -59,5 +59,5 @@ def read_availability(
 
     for room in match_response.rooms:
         response.add_room(room)
-
+        
     return response

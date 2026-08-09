@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 from enum import StrEnum
 
-
-from conversation.value_object.information_fields import InformationField
 from conversation.value_object.action import Action
+from conversation.value_object.information_fields import InformationField
 from conversation.value_object.intent import Intent
-
 from observability.log_messages import LOG_MSG
+from observability.utils.to_json import to_jsonable
+
 
 class DefaultPhrases(StrEnum):
     GREETING = "Welcome! How can I help you?"
@@ -44,17 +45,19 @@ def build(action: Action, intent: Intent, missing_fields: list[InformationField]
             return build_ask_data(intent=intent, missing_fields=missing_fields)
         case Action.ASK_FOR_CONFIRMATION:
             return build_ask_confirmation(intent=intent, missing_fields=missing_fields)
+    return "no match in build function"
 
 
 def build_ask_confirmation(intent: Intent, missing_fields: list[InformationField]) -> str:
     if missing_fields:
-        LOG_MSG.debug("Missing fields in confirmation branch", extra=missing_fields)
+        LOG_MSG.debug("Missing fields in confirmation branch", extra=to_jsonable(missing_fields))
         return DefaultPhrases.REPEAT_ASK_CONFIRMATION
     match intent:
         case Intent.BOOKING_CANCELLATION:
             return DefaultPhrases.ASK_CONFIRMATION_CANCELLATION
         case Intent.BOOKING_REQUEST:
             return DefaultPhrases.ASK_CONFIRMATION_BOOKING
+    return "no match in build function"
 
 def build_ask_data(intent: Intent, missing_fields: list[InformationField]) -> str:
     match intent:
@@ -64,6 +67,7 @@ def build_ask_data(intent: Intent, missing_fields: list[InformationField]) -> st
             return build_ask_data_booking_request(missing_fields=missing_fields)
         case Intent.BOOKING_CANCELLATION:
             return build_ask_data_cancellation(missing_fields=missing_fields)
+    return "no match in build function"
 
 
 def build_ask_data_cancellation(missing_fields: list[InformationField]) -> str:
@@ -74,6 +78,7 @@ def build_ask_data_cancellation(missing_fields: list[InformationField]) -> str:
         return retval + f" {DefaultPhrases.ASK_EMAIL}"
     if InformationField.CHECK_IN in missing_fields:
         return retval + f" {DefaultPhrases.ASK_CHECK_IN}"
+    return "no match in build function"
 
 def build_ask_data_booking_request(missing_fields: list[InformationField]) -> str:
     retval = DefaultPhrases.BOOKING_ASK_FOR_DATA
@@ -92,10 +97,11 @@ def build_ask_data_booking_request(missing_fields: list[InformationField]) -> st
         return retval + f" {DefaultPhrases.ASK_BREAKFAST}"
     if InformationField.EMAIL in missing_fields:
         return retval + f" {DefaultPhrases.ASK_EMAIL}"
+    return "no match in build function"
 
 
 
-def build_ask_data_availability(missing_fields: list[InformationField], called_from_booking=False) -> str:
+def build_ask_data_availability(missing_fields: list[InformationField], called_from_booking: bool=False) -> str:
     retval = ""
     if not called_from_booking:
         retval += DefaultPhrases.AVAILABILITY_ASK_FOR_DATA

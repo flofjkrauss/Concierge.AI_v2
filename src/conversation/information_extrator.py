@@ -5,6 +5,8 @@ from conversation.entities.information import Information
 from conversation.entities.message import Message
 from conversation.value_object.information_fields import InformationField
 from domain.value_objects.information_topic import InformationTopic
+from domain.value_objects.room_category import RoomCategory
+
 
 #debugging helper class
 class DebugTestInput:
@@ -32,7 +34,7 @@ class InformationExtractor:
         )
         email = Information(
                     information_field=InformationField.EMAIL,
-                    content="mail@mail.com"
+                    content="venom@world-dominion.com"
                 )
         check_in = Information(
                     information_field=InformationField.CHECK_IN,
@@ -55,10 +57,6 @@ class InformationExtractor:
                      information_field=InformationField.ACCESSIBLE,
                      content=False
                 )
-        booking_id = Information(
-                     information_field=InformationField.BOOKING_ID,
-                     content="none"
-                )
         information_topic = Information(
                      information_field=InformationField.INFORMATION_TOPIC,
                      content=InformationTopic.WIFI
@@ -79,7 +77,12 @@ class InformationExtractor:
             information_field=InformationField.INFORMATION_TOPIC,
             content=InformationTopic.AIRPORT_TRANSFER
         )
-        print("extractor: ", message.content)
+
+        room_category = Information(
+            information_field=InformationField.ROOM_CATEGORY,
+            content=RoomCategory.FAMILY
+        )
+       #print("extractor: ", message.content)
         match message.original_content:
             case DebugTestInput.AVAILABILIY_CHECK:
                 return [guest_count, check_out, accessible, check_in]
@@ -88,7 +91,7 @@ class InformationExtractor:
             case DebugTestInput.BOOKING_CHECK:
                 return [last_name,check_in, email]
             case DebugTestInput.BOOKING_REQUEST:
-                return [first_name, last_name, guest_count, check_out, accessible, check_in, breakfast, email]
+                return [first_name, last_name, guest_count, check_out, accessible, check_in, breakfast, email, preferred_language, room_category, phone]
             case DebugTestInput.INFORMATION_REQUEST:
                 return [information_topic]
             case DebugTestInput.BULLSHIT:

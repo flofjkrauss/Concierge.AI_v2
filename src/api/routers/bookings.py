@@ -1,5 +1,5 @@
-from typing import Annotated
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -8,8 +8,9 @@ from api.schemas.booking_schema import BookingResponse
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking
 from domain.entities.booking_request import BookingRequest
+from domain.entities.room import Room
 from domain.services.cancel_booking import cancel_booking, cancel_booking_by_name
-from domain.services.confirm_booking import confirm_booking, get_room
+from domain.services.confirm_booking import confirm_booking
 from domain.services.create_customer import create_customer, get_customer
 from domain.services.get_booking import get_booking, get_booking_by_name
 from domain.services.get_information import get_hotel_address, get_hotel_name
@@ -22,9 +23,10 @@ router = APIRouter(
 )
 
 #delete this after development
-from domain.services.find_matching_rooms import find_matching_rooms, MatchResponse
+from domain.services.find_matching_rooms import find_matching_rooms
 from utils.connect_database import connect
-DEBUG_MODE = True
+
+DEBUG_MODE = False
 DEBUG_CATEGORY = RoomCategory.FAMILY
 class DebugData:
     FIRST_NAME: str = "test"
@@ -33,7 +35,7 @@ class DebugData:
     PREFERRED_LANGUAGE: str = "de"
 
 
-debug_booking_request: MatchResponse = find_matching_rooms(
+debug_booking_request = find_matching_rooms(
     check_in=date(2028, 10, 10),
     check_out=date(2028, 10, 20),
     guest_count=2,
@@ -43,15 +45,16 @@ debug_booking_request: MatchResponse = find_matching_rooms(
 )
 
 
+
 @router.get("/booking_by_name")
 def read_booking_by_name(
     database: Annotated[
         DatabaseInterface,
         Depends(get_database),
         ],
-    last_name: str | None=None,
-    email: str | None=None,
-    check_in: str | None=None,
+    last_name: str,
+    email: str,
+    check_in: str,
     ) -> BookingResponse | None:
     if DEBUG_MODE:
         last_name = DebugData.LAST_NAME
@@ -62,7 +65,7 @@ def read_booking_by_name(
     try:
         normalized_check_in = date.fromisoformat(check_in)
     except ValueError:
-        LOG_MSG.error(f"Invalid data format received in read_booking_by_name check")
+        LOG_MSG.error("Invalid data format received in read_booking_by_name check")
         return None
     
     booking = get_booking_by_name(
@@ -80,9 +83,9 @@ def read_booking_to_cancel_by_name(
         DatabaseInterface,
         Depends(get_database),
     ],
-    last_name: str | None=None,
-    email: str | None=None,
-    check_in: str | None=None,
+    last_name: str,
+    email: str,
+    check_in: str,
    
 ) -> BookingResponse | None:
     if DEBUG_MODE:
@@ -107,12 +110,12 @@ def read_booking_request(
             DatabaseInterface,
             Depends(get_database),
         ],
-    booking_request: BookingRequest | None=None,
-    room_category: str | None=None,
-    first_name: str | None=None,
-    last_name: str | None=None,
-    email: str | None=None,
-    preferred_language: str | None=None,
+    booking_request: BookingRequest,
+    room_category: str,
+    first_name: str,
+    last_name: str,
+    email: str,
+    preferred_language: str,
     
 ) -> BookingResponse | None:
     if DEBUG_MODE:
@@ -125,7 +128,7 @@ def read_booking_request(
     try:
         LOG_MSG.debug(f"BookingRequest confirmation requested for request: {booking_request.request_id} and room category: {room_category}")
         try:
-            category = RoomCategory(room_category)
+            RoomCategory(room_category)
         except ValueError:
             LOG_MSG.debug(f"Room category could not be found: {room_category}")
             raise HTTPException(
@@ -166,7 +169,7 @@ def read_booking(
         DatabaseInterface,
         Depends(get_database),
     ],
-    booking_id: str | None=None,
+    booking_id: str,
     
 ) -> BookingResponse | None:
     if DEBUG_MODE:
@@ -187,7 +190,7 @@ def read_booking_to_cancel(
         DatabaseInterface,
         Depends(get_database),
     ],
-    booking_id: str | None=None,
+    booking_id: str,
     
 ) -> BookingResponse | None:
     if DEBUG_MODE:
@@ -206,7 +209,7 @@ def _response_from_booking(
     database: DatabaseInterface,
     ) -> BookingResponse | None :
     try:
-        if booking is None:
+        if not isinstance(booking, Booking):
             raise KeyError("booking is None")
         
         customer = get_customer(booking.customer_id, database=database)
@@ -215,7 +218,10 @@ def _response_from_booking(
         
         hotel_name = get_hotel_name(database=database)
         hotel_address = get_hotel_address(database=database)
-        category = database.get_room(booking.room_id).category
+        room = database.get_room(booking.room_id)
+        if not isinstance(room, Room):
+            return None
+        category = room.category
 
         return BookingResponse(
             booking_id=booking.booking_id,

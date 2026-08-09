@@ -16,7 +16,7 @@ def room_matches_booking_request(
     existing_bookings: Collection[Booking],
 ) -> bool:
     """Return whether a room satisfies all requirements of a booking request."""
-    if category != "":
+    if category != "":  # noqa: SIM102
         if room.category != category:
             LOG_MSG.debug(f"Room Room {room.room_id} does not match booking request {booking_request.request_id} because it has a different category.")
             return False

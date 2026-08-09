@@ -1,25 +1,24 @@
 """handle user communication"""
-from api.schemas.availability_schema import AvailabilityResponse as ApiAvailabilityResponse
-
-from domain.entities.room import Room
-
+# mypy: disable-error-code="attr-defined"
+from api.schemas.availability_schema import (
+    AvailabilityResponse as ApiAvailabilityResponse,
+)
 from configuration.application import ApplicationSettings
 from conversation.entities.interaction_response import (
-    EmptyInteractionResponse,
-    ErrorResponse,
-    InteractionResponse,
-    InformationResponse,
-    GreetingResponse,
+    AskConfirmationResponse,
     AvailabilityResponse,
     BookingResponse,
-    AskConfirmationResponse,
-    UserOptions
-
+    EmptyInteractionResponse,
+    ErrorResponse,
+    GreetingResponse,
+    InformationResponse,
+    InteractionResponse,
 )
 from conversation.entities.message import Message
 from conversation.value_object.action import Action
 from conversation.value_object.default_phrases import DefaultPhrases, build
 from conversation.value_object.intent import Intent
+from domain.entities.room import Room
 from observability.log_messages import LOG_MSG
 
 
@@ -74,15 +73,10 @@ class UserInteraction:
                                     content=data)
 
     def ask_for_confirmation(self, intent: Intent, data: object) -> InteractionResponse:
-        options = [
-            UserOptions.CONFIRMED,
-            UserOptions.DECLINED,
-            UserOptions.INTERRUPTED
-        ]
         text = build(Action.ASK_FOR_CONFIRMATION, intent=intent, missing_fields=[])
         return AskConfirmationResponse(session_active=True,
                                 text=text,
-                                options=options)
+                                data=data)
     
     def display_info(self, intent: Intent, data: object) -> InteractionResponse:
         if not isinstance(data, str):
@@ -92,12 +86,10 @@ class UserInteraction:
         return InformationResponse(text=data, session_active=True)
     
     def display_availability(self, intent: Intent, data: object) -> InteractionResponse:
-        content = ApiAvailabilityResponse(
-            request_id=""
-        )
-        for room in data:
+        content = ApiAvailabilityResponse()
+        for room in data.rooms:
             if not isinstance(room, Room):
-                err = f"Expected list of room objects (domain data). Invalid object in list: {room}"
+                err = f"Expected list of match response objects (domain data). Invalid object in list: {room}"
                 LOG_MSG.error(err, extra=data)
                 raise TypeError(err)
             content.add_room(room=room)

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from domain.entities.room import Room
 from domain.value_objects.money import Money
 from domain.value_objects.room_category import RoomCategory
-from domain.entities.room import Room
 
 
 class AvailabilityResponse(BaseModel):

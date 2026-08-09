@@ -42,3 +42,4 @@ def get_booking_by_name(
         raise TypeError("check_in must be a date object")
 
     return database.get_booking_by_name(last_name=last_name, email=email, check_in=check_in)
+    

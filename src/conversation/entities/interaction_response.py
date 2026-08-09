@@ -7,6 +7,7 @@ from api.schemas.availability_schema import (
 )
 from api.schemas.booking_schema import BookingResponse as api_booking_response
 
+
 class UserOptions(StrEnum):
     """Result of interpreting a message while confirmation is pending."""
 
@@ -56,5 +57,5 @@ class GreetingResponse(InteractionResponse):
 @dataclass(slots=True)
 class AskConfirmationResponse(InteractionResponse):
     """ ask for confirmation response """
-    options: list[UserOptions]
+    data: api_booking_response
     

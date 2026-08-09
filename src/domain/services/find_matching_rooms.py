@@ -1,15 +1,16 @@
 """Service for finding rooms that match a booking request."""
+from dataclasses import dataclass
 from datetime import date
 from uuid import uuid4
-from dataclasses import dataclass
 
 from database.interface import DatabaseInterface
 from domain.entities.booking_request import BookingRequest
 from domain.entities.room import Room
 from domain.rules.booking import room_matches_booking_request
-from domain.value_objects.stay_period import StayPeriod
 from domain.value_objects.room_category import RoomCategory
+from domain.value_objects.stay_period import StayPeriod
 from observability import LOG_MSG
+
 
 @dataclass(slots=True, frozen=True)
 class MatchResponse:
@@ -24,7 +25,7 @@ def find_matching_rooms(
     accessible: bool,
     database: DatabaseInterface,
     room_category: RoomCategory = ""
-) -> MatchResponse:
+) -> MatchResponse | None:
     """Return all rooms that satisfy the given booking request."""
     if not all([
         isinstance(check_in, date),
@@ -34,7 +35,7 @@ def find_matching_rooms(
         isinstance(accessible, bool)
     ]):
         LOG_MSG.error("Invalid data in find_matching_rooms")
-        return []
+        return None
     
     booking_request = BookingRequest(
         request_id=str(uuid4()),

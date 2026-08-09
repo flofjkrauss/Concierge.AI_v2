@@ -34,6 +34,8 @@ class IntentInformationMapper:
                 retval.append(InformationField.FIRST_NAME)
                 retval.append(InformationField.LAST_NAME)
                 retval.append(InformationField.EMAIL)
+                retval.append(InformationField.ROOM_CATEGORY)
+                retval.append(InformationField.PHONE)
             case Intent.INFORMATION_REQUEST:
                 retval.append(InformationField.INFORMATION_TOPIC)
             case Intent.CONVERSATION_INITIATION:

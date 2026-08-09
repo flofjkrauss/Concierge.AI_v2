@@ -1,12 +1,13 @@
 """Service for cancelling a booking."""
 
+from datetime import date
+
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking
 from domain.services.get_booking import get_booking, get_booking_by_name
 from domain.value_objects.booking_status import BookingStatus
 from observability import LOG_MSG
 
-from datetime import date
 
 def cancel_booking(
     booking_id: str,

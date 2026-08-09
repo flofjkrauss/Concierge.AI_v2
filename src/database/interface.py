@@ -66,5 +66,9 @@ class DatabaseInterface(ABC):
         """Return hotel address"""
 
     @abstractmethod
-    def get_booking_by_name(self, last_name: str, email: str, check_in: date) -> Booking:
+    def get_booking_by_name(self, last_name: str, email: str, check_in: date) -> Booking | None:
         """Return a booking by last_name and email combination"""
+
+    @abstractmethod
+    def mail_is_in_use(self, email: str) -> bool:
+        """ Return if a mail address is already registered by any customer"""
