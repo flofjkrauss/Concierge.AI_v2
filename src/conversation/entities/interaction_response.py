@@ -1,11 +1,16 @@
 """conversation entity."""
 from dataclasses import dataclass
 from enum import StrEnum
+from datetime import date
 
 from api.schemas.availability_schema import (
     AvailabilityResponse as api_availability_response,
 )
 from api.schemas.booking_schema import BookingResponse as api_booking_response
+
+from domain.value_objects.money import Money
+from domain.value_objects.room_category import RoomCategory
+from domain.value_objects.booking_status import BookingStatus
 
 
 class UserOptions(StrEnum):
@@ -58,4 +63,30 @@ class GreetingResponse(InteractionResponse):
 class AskConfirmationResponse(InteractionResponse):
     """ ask for confirmation response """
     data: api_booking_response
-    
+
+@dataclass(slots=True, frozen=True)
+class BookingResponseObject:
+    status: BookingStatus
+    room_category: str
+    guest_count: int
+    check_in: date
+    check_out: date
+    total_prize: int
+    accessible: bool
+    breakfast: bool
+    first_name: str
+    last_name: str
+    email: str
+    phone: str | None = None
+
+@dataclass(slots=True, frozen=True)
+class BookingPreview:
+    first_name: str
+    last_name: str
+    email: str
+    check_in: date
+    check_out: date
+    guest_count: int
+    room_category: RoomCategory
+    breakfast_included: bool
+    total_price: Money

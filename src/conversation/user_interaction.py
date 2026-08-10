@@ -86,6 +86,8 @@ class UserInteraction:
         return InformationResponse(text=data, session_active=True)
     
     def display_availability(self, intent: Intent, data: object) -> InteractionResponse:
+        if len(data.rooms) == 0:
+            return InteractionResponse(text=DefaultPhrases.NO_VACANCY, session_active=True)
         content = ApiAvailabilityResponse()
         for room in data.rooms:
             if not isinstance(room, Room):

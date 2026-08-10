@@ -17,7 +17,7 @@ def confirm_booking(
     booking_request: BookingRequest,
     room_category: RoomCategory,
     customer: Customer,
-    database: DatabaseInterface,
+    database: DatabaseInterface
 ) -> Booking:
     """Create and persist a confirmed booking."""
 

@@ -10,6 +10,7 @@ from typing import Literal, Protocol, assert_never
 from configuration.application import ApplicationSettings
 from conversation.entities.information import Information
 from conversation.entities.message import Message
+from conversation.entities.interaction_response import BookingResponseObject
 from conversation.graph.state import (
     ConfirmationOutcome,
     ConversationMessage,
@@ -32,6 +33,7 @@ from conversation.value_object.intent_information_mapping import (
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking
 from domain.entities.customer import Customer
+from domain.services.calculate_price import calculate_price
 from domain.services.cancel_booking import cancel_booking_by_name
 from domain.services.confirm_booking import confirm_booking
 from domain.services.create_customer import create_customer
@@ -94,11 +96,14 @@ class DatabaseDomainAdapter:
                     information,
                     InformationField.CHECK_IN
                 )
-                return get_booking_by_name(
+                booking = get_booking_by_name(
                     last_name=last_name,
                     email=email,
                     check_in=check_in,
                     database=self.database)
+
+                return _build_booking_response_data(booking=booking, database=self.database)
+            
             case DomainOperation.CREATE_BOOKING:
                 room_category = _required_string(
                     information,
@@ -116,12 +121,13 @@ class DatabaseDomainAdapter:
                 )
                 if len(match_response.rooms) > 0:
                     customer = _create_customer_from_information(information, database=self.database)
-                    return confirm_booking(
+                    booking = confirm_booking(
                         booking_request=match_response.request,
                         room_category=room_category,
                         customer=customer,
                         database=self.database
                     )
+                    return _build_booking_response_data(booking=booking, database=self.database)
             case DomainOperation.CANCEL_BOOKING:
                 last_name = _required_string(
                     information,
@@ -135,12 +141,70 @@ class DatabaseDomainAdapter:
                     information,
                     InformationField.CHECK_IN
                 )
-                return cancel_booking_by_name(
+                booking = cancel_booking_by_name(
                     last_name=last_name,
                     email=email,
                     check_in=check_in,
                     database=self.database,
                 )
+                return _build_booking_response_data(booking=booking, database=self.database)
+            case DomainOperation.PREVIEW_BOOKING:
+                room_category = _required_string(
+                    information,
+                    InformationField.ROOM_CATEGORY
+                )
+                first_name = _required_string(
+                    information,
+                    InformationField.FIRST_NAME
+                )
+                last_name = _required_string(
+                    information,
+                    InformationField.LAST_NAME
+                )
+                phone = _optional_string(
+                    information,
+                    InformationField.PHONE,
+                    default="not given"
+                )
+                email = _required_string(
+                    information,
+                    InformationField.EMAIL
+                )
+                (check_in, check_out, guest_count, accessible, breakfast) = _booking_request_tuple_from_information(information)
+                match_response =  find_matching_rooms(
+                    check_in=check_in,
+                    check_out=check_out,
+                    guest_count=guest_count,
+                    breakfast=breakfast,
+                    accessible=accessible,
+                    database=self.database,
+                    room_category=room_category
+                )
+                
+                if len(match_response.rooms) > 0:
+                    room = match_response.rooms[0]                    
+                    total_price = calculate_price(
+                        booking_request=match_response.request,
+                        room=room,
+                        database=self.database
+                        )
+                    return BookingResponseObject(
+                        status=BookingStatus.PENDING,
+                        room_category=room_category,
+                        guest_count=guest_count,
+                        check_in=check_in,
+                        check_out=check_out,
+                        total_prize=total_price,
+                        accessible=accessible,
+                        breakfast=breakfast,
+                        first_name=first_name,
+                        last_name=last_name,
+                        email=email,
+                        phone=phone
+                    )
+                
+
+
             case DomainOperation.GET_INFORMATION:
                 topic_value = _required_string(
                     information,
@@ -315,6 +379,7 @@ class ConversationNodes:
         information_updates = {
             information.information_field: information for information in extracted
         }
+
         return {
             "collected_information": information_updates,
             "unknown_counter": unknown_counter,
@@ -458,26 +523,11 @@ class ConversationNodes:
                 intent=current_intent,
                 operation=DomainOperation.CREATE_BOOKING,
             )
+
             return {
-                "action": Action.ASK_FOR_CONFIRMATION,
-                "domain_data": dict(state.get("collected_information", {})),
-                "expected_interaction": expected,
-                "last_intent_fulfilled": False,
+                "domain_operation": DomainOperation.PREVIEW_BOOKING,
+                "last_intent_fulfilled": False
             }
-        """
-        if current_intent == Intent.BOOKING_CANCELLATION:
-            expected = ExpectedInteraction(
-                kind=ExpectedInteractionKind.CANCELLATION_CONFIRMATION,
-                intent=current_intent,
-                operation=DomainOperation.CANCEL_BOOKING,
-            )
-            return {
-                "action": Action.ASK_FOR_CONFIRMATION,
-                "domain_data": dict(state.get("collected_information", {})),
-                "expected_interaction": expected,
-                "last_intent_fulfilled": False,
-            }
-        """
 
         return {"action": Action.ASK_INTENT, "domain_data": None}
 
@@ -487,6 +537,8 @@ class ConversationNodes:
         operation = state.get("domain_operation")
         if operation is None:
             raise ValueError("No domain operation was selected")
+        
+       
 
         try:
             result = self.domain_adapter.execute(
@@ -502,6 +554,20 @@ class ConversationNodes:
                 "session_active": response.session_active,
                 "last_intent_fulfilled": False,
             }
+        if operation == DomainOperation.PREVIEW_BOOKING:
+            expected = ExpectedInteraction(
+                kind=ExpectedInteractionKind.BOOKING_CONFIRMATION,
+                intent=Intent.BOOKING_REQUEST,
+                operation=DomainOperation.CREATE_BOOKING,
+            )
+
+            return {
+                "domain_operation": None,
+                "domain_data": result,
+                "action": Action.ASK_FOR_CONFIRMATION,
+                "expected_interaction": expected,
+                "last_intent_fulfilled": False,
+            }
         
         if (
             operation == DomainOperation.GET_BOOKING
@@ -515,14 +581,16 @@ class ConversationNodes:
                     "last_intent_fulfilled": False,
                 }
 
-            if isinstance(result, Booking) and result.status == BookingStatus.CANCELLED:
-                return {
-                    "domain_operation": None,
-                    "domain_data": result,
-                    "action": Action.DISPLAY_BOOKING,
-                    "expected_interaction": None,
-                    "last_intent_fulfilled": True,
-                }
+            
+
+            if isinstance(result, BookingResponseObject) and result.status == BookingStatus.CANCELLED:
+                    return {
+                        "domain_operation": None,
+                        "domain_data": result,
+                        "action": Action.DISPLAY_BOOKING,
+                        "expected_interaction": None,
+                        "last_intent_fulfilled": True,
+                    }
 
             expected = ExpectedInteraction(
                 kind=ExpectedInteractionKind.CANCELLATION_CONFIRMATION,
@@ -536,6 +604,7 @@ class ConversationNodes:
                 "expected_interaction": expected,
                 "last_intent_fulfilled": False,
             }
+        
 
         response_action = {
             DomainOperation.FIND_AVAILABILITY: Action.DISPLAY_AVAILABILITY,
@@ -543,6 +612,7 @@ class ConversationNodes:
             DomainOperation.CREATE_BOOKING: Action.DISPLAY_BOOKING,
             DomainOperation.CANCEL_BOOKING: Action.DISPLAY_BOOKING,
             DomainOperation.GET_INFORMATION: Action.DISPLAY_INFO,
+            DomainOperation.PREVIEW_BOOKING: Action.DISPLAY_BOOKING
         }[operation]
         return {
             "domain_operation": None,
@@ -724,6 +794,27 @@ def _create_customer_from_information(
         raise TypeError("error in _create_customer_from_information")
     return customer
 
+def _build_booking_response_data(booking: Booking, database: DatabaseInterface) -> BookingResponseObject | None:
+    if booking is None:
+        return None
+    
+    customer = database.get_customer(booking.customer_id)
+    room = database.get_room(booking.room_id)
+    return BookingResponseObject(
+        status=booking.status,
+        room_category=room.category,
+        guest_count=booking.guest_count,
+        check_in=booking.stay_period.check_in,
+        check_out=booking.stay_period.check_out,
+        total_prize=booking.total_price,
+        accessible=booking.accessible_requested,
+        breakfast=booking.breakfast_included,
+        first_name=customer.first_name,
+        last_name=customer.last_name,
+        email=customer.email,
+        phone=customer.phone
+    )
+
 
 def _required_content(
     information: Mapping[InformationField, Information],
@@ -822,3 +913,4 @@ def nodes_from_settings(
         domain_language=settings.domain_language,
         max_unknown_messages=settings.max_num_msg_with_intent_unknown,
     )
+

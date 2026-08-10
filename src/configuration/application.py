@@ -18,7 +18,7 @@ class ApplicationSettings(Settings):
     # webserver config
     host: str = "127.0.0.1"
     port: int = 8000
-    reload: bool = True
+    reload: bool = False
 
     # Streamlit client server config
     #streamlit_host: str = "127.0.0.1"
