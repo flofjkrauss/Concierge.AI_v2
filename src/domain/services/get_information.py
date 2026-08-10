@@ -14,10 +14,10 @@ def get_information(
 
     if information is None:
         LOG_MSG.debug(
-            f"No hotel information was found for key {topic}.")
+            f"(ERROR)No hotel information was found for key {topic}.")
         return ""
 
-    return information
+    return f"({topic}){information}"
 
 def get_hotel_name(database: DatabaseInterface) -> str:
     return database.get_hotel_name()

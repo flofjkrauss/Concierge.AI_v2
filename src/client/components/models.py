@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Literal, cast
 from uuid import uuid4
@@ -9,6 +10,11 @@ from uuid import uuid4
 from client.components.api import ConversationResponse
 
 type ChatRole = Literal["assistant", "user"]
+
+_INFORMATION_WIRE_PATTERN = re.compile(
+    r"^\((?P<topic>[a-z][a-z0-9_]*)\)(?P<answer>.+)$",
+    flags=re.IGNORECASE | re.DOTALL,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +34,45 @@ class Shortcut:
     visible_text: str
     api_text: str
     source_message_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class InformationCardData:
+    """One structured hotel-information answer for the guest UI."""
+
+    topic: str
+    answer: str
+    title: str | None
+
+    @classmethod
+    def from_mapping(cls, data: dict[str, object]) -> InformationCardData | None:
+        """Normalize a structured information response from the conversation API."""
+
+        topic = _string_field(data, "topic")
+        answer = _string_field(data, "answer")
+        if topic is None or answer is None:
+            return None
+        return cls(
+            topic=topic.casefold(),
+            answer=answer,
+            title=_string_field(data, "title"),
+        )
+
+    @classmethod
+    def from_wire_text(cls, text: str) -> InformationCardData | None:
+        """Parse the explicit ``(topic)answer`` conversation wire format."""
+
+        match = _INFORMATION_WIRE_PATTERN.fullmatch(text.strip())
+        if match is None:
+            return None
+        answer = match.group("answer").strip()
+        if not answer:
+            return None
+        return cls(
+            topic=match.group("topic").casefold(),
+            answer=answer,
+            title=None,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,7 +144,11 @@ class BookingCardData:
     def is_cancellation_candidate(self) -> bool:
         """Return whether a confirmation concerns an existing booking."""
 
-        return self.booking_id is not None or self.status in {"confirmed", "cancelled"}
+        normalized_status = self.status.casefold() if self.status is not None else None
+        return self.booking_id is not None or normalized_status in {
+            "confirmed",
+            "cancelled",
+        }
 
 
 def _field(data: dict[str, object], *names: str) -> object | None:

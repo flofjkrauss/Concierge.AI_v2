@@ -14,7 +14,11 @@ from client.components.api import (
     ConversationResponse,
     ResponseKind,
 )
-from client.components.lifecycle import register_tab_close_termination
+from client.components.lifecycle import (
+    focus_chat_input_on_load,
+    register_tab_close_termination,
+    scroll_chat_to_latest,
+)
 from client.components.models import ChatEntry, ChatRole
 from client.components.views import apply_theme, render_header, render_transcript
 
@@ -29,6 +33,7 @@ SESSION_ACTIVE_KEY = "harbour_light_session_active"
 LAST_ACTIVITY_KEY = "harbour_light_last_activity"
 CONSUMED_ACTIONS_KEY = "harbour_light_consumed_actions"
 INITIALIZED_KEY = "harbour_light_initialized"
+LAST_SCROLLED_MESSAGE_KEY = "harbour_light_last_scrolled_message"
 
 SERVICE_UNAVAILABLE = (
     "The concierge service is unavailable right now. Please try a new chat in a moment."
@@ -54,6 +59,7 @@ def _initialize_local_state() -> None:
         LAST_ACTIVITY_KEY: time.monotonic(),
         CONSUMED_ACTIONS_KEY: set(),
         INITIALIZED_KEY: False,
+        LAST_SCROLLED_MESSAGE_KEY: None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -194,6 +200,27 @@ def _api_from_environment() -> ConversationApi | None:
         return None
 
 
+def _request_scroll_to_latest_message() -> None:
+    """Request one auto-scroll when the latest rendered message changes."""
+
+    messages = _messages()
+    if not messages:
+        return
+    latest_message_id = messages[-1].message_id
+    if st.session_state[LAST_SCROLLED_MESSAGE_KEY] == latest_message_id:
+        return
+    scroll_chat_to_latest(latest_message_id, len(messages))
+    st.session_state[LAST_SCROLLED_MESSAGE_KEY] = latest_message_id
+
+
+def _submit_chat_input(api: ConversationApi | None) -> None:
+    """Submit the keyed chat input before Streamlit renders the next frame."""
+
+    prompt = st.session_state.get("harbour_light_guest_input")
+    if isinstance(prompt, str) and prompt.strip():
+        _submit_turn(api, visible_text=prompt, api_text=prompt)
+
+
 def main() -> None:
     """Render the full-height guest chat and coordinate its API session."""
 
@@ -246,15 +273,16 @@ def main() -> None:
         )
         st.rerun()
 
-    prompt = st.chat_input(
+    st.chat_input(
         "Ask your concierge…",
         key="harbour_light_guest_input",
         max_chars=250,
         disabled=api is None,
+        on_submit=_submit_chat_input,
+        args=(api,),
     )
-    if prompt:
-        _submit_turn(api, visible_text=prompt, api_text=prompt)
-        st.rerun()
+    _request_scroll_to_latest_message()
+    focus_chat_input_on_load()
 
 
 if __name__ == "__main__":

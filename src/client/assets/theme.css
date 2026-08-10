@@ -125,6 +125,7 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stChatMessage"] {
+  align-items: flex-start;
   color: var(--harbour-ink);
   margin: 0.55rem 0;
   padding: 1rem 1.05rem;
@@ -132,6 +133,56 @@ html, body, [class*="css"] {
   border-radius: 18px;
   background: var(--harbour-surface);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) {
+  align-items: center;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stChatMessageContent"] {
+  display: flex;
+  min-height: 32px;
+  align-self: stretch;
+  align-items: center;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stChatMessageContent"] > [data-testid="stVerticalBlock"] {
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: center;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stMarkdownContainer"] {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  margin-bottom: 0 !important;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stMarkdownContainer"] p {
+  margin-block: 0 !important;
 }
 
 [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p,
@@ -238,18 +289,79 @@ html, body, [class*="css"] {
   line-height: 1.3;
 }
 
+.harbour-room-price {
+  margin: 0.3rem 0 0.2rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid rgba(184, 143, 65, 0.42);
+  border-radius: 11px;
+  background: rgba(217, 174, 92, 0.1);
+}
+
+.harbour-room-price__label {
+  display: block;
+  margin-bottom: 0.12rem;
+  color: #6c604c;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.harbour-room-price__amount {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.2rem 0.38rem;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.harbour-room-price__amount strong {
+  color: #18212b;
+  font-size: 1.42rem;
+  font-weight: 780;
+  line-height: 1.15;
+}
+
+.harbour-room-price__suffix,
+.harbour-room-price__total {
+  color: #5f6670;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.harbour-room-price__suffix {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.harbour-room-price__total {
+  display: block;
+  margin-top: 0.22rem;
+}
+
 [class*="st-key-room_card_"] .stButton button {
   height: 54px;
   min-height: 54px;
 }
 
 .stButton button {
+  overflow: hidden;
   min-height: 44px;
   border-color: #a99a7c;
   border-radius: 11px;
   color: #f6f1e7;
   background: #263241;
   font-weight: 650;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.stButton button::before,
+.stButton button::after {
+  border-radius: inherit !important;
 }
 
 .stButton button:hover {
@@ -262,13 +374,17 @@ html, body, [class*="css"] {
   font-size: 1rem !important;
   line-height: 1.2 !important;
   color: inherit !important;
+  background: transparent !important;
 }
 
-.stButton button[kind="primary"],
-.stButton button[kind="primary"] p {
+.stButton button[kind="primary"] {
   border-color: #d9ae5c;
   color: #12171d !important;
   background: #d9ae5c;
+}
+
+.stButton button[kind="primary"] p {
+  color: #12171d !important;
 }
 
 .stButton button[kind="primary"]:hover {
@@ -276,16 +392,80 @@ html, body, [class*="css"] {
   background: #e7c574;
 }
 
-[class*="st-key-cancel_booking_"] button,
-[class*="st-key-cancel_booking_"] button p {
+[class*="st-key-cancel_booking_"] button {
   border-color: var(--harbour-danger) !important;
   color: #ffffff !important;
   background: var(--harbour-danger) !important;
 }
 
+[class*="st-key-cancel_booking_"] button p {
+  color: #ffffff !important;
+}
+
 .stButton button:focus-visible {
   outline: 3px solid rgba(217, 174, 92, 0.38) !important;
   outline-offset: 2px;
+}
+
+.harbour-information-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  overflow: hidden;
+  margin: 0.15rem 0;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid rgba(217, 174, 92, 0.5);
+  border-left: 4px solid var(--harbour-gold-soft);
+  border-radius: 16px;
+  color: #f6f1e7;
+  background:
+    radial-gradient(circle at 94% 8%, rgba(217, 174, 92, 0.14), transparent 34%),
+    linear-gradient(145deg, #202a35, #121920);
+  box-shadow: 0 14px 32px rgba(10, 15, 21, 0.24);
+}
+
+.harbour-information-card__icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(217, 174, 92, 0.48);
+  border-radius: 15px;
+  color: #f4d793;
+  background: rgba(217, 174, 92, 0.11);
+  font-family: "Segoe UI Symbol", "Segoe UI Emoji", sans-serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.harbour-information-card__content {
+  min-width: 0;
+}
+
+.harbour-information-card__eyebrow {
+  display: block;
+  margin-bottom: 0.18rem;
+  color: #d9bd82;
+  font-size: 0.74rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+[data-testid="stChatMessage"] .harbour-information-card h4 {
+  margin: 0 0 0.35rem;
+  color: #fffaf0 !important;
+  font-size: 1.16rem;
+  line-height: 1.3;
+}
+
+[data-testid="stChatMessage"] .harbour-information-card p {
+  margin: 0;
+  color: #d8d8d5 !important;
+  font-size: 1.04rem !important;
+  line-height: 1.55;
 }
 
 .harbour-booking-card {
@@ -304,6 +484,16 @@ html, body, [class*="css"] {
 .harbour-booking-card--danger {
   border-color: rgba(180, 35, 24, 0.7);
   border-top-color: var(--harbour-danger);
+}
+
+.harbour-booking-card--cancelled {
+  border-color: rgba(206, 84, 72, 0.72);
+  border-top-color: #e05548;
+  background:
+    linear-gradient(rgba(28, 31, 35, 0.22), rgba(28, 31, 35, 0.22)),
+    radial-gradient(circle at 92% 5%, rgba(180, 35, 24, 0.17), transparent 38%),
+    linear-gradient(145deg, #25282c, #15191d);
+  box-shadow: 0 10px 24px rgba(10, 15, 21, 0.18);
 }
 
 .harbour-booking-card__header,
@@ -336,7 +526,10 @@ html, body, [class*="css"] {
 }
 
 .harbour-booking-card__status {
+  display: inline-flex;
   flex: 0 0 auto;
+  gap: 0.34rem;
+  align-items: center;
   margin-left: 1rem;
   padding: 0.35rem 0.62rem;
   border: 1px solid rgba(217, 174, 92, 0.46);
@@ -351,6 +544,18 @@ html, body, [class*="css"] {
   border-color: rgba(255, 159, 148, 0.42);
   color: #ffb8af;
   background: rgba(180, 35, 24, 0.16);
+}
+
+.harbour-booking-card--confirmed .harbour-booking-card__status {
+  border-color: rgba(91, 198, 139, 0.58);
+  color: #a5e7bf;
+  background: rgba(33, 122, 74, 0.24);
+}
+
+.harbour-booking-card--cancelled .harbour-booking-card__status {
+  border-color: rgba(255, 159, 148, 0.52);
+  color: #ffe1dc;
+  background: rgba(180, 35, 24, 0.42);
 }
 
 .harbour-booking-card__room {
@@ -375,6 +580,45 @@ html, body, [class*="css"] {
 .harbour-booking-card__room strong {
   color: #fffaf0;
   font-size: 1.08rem;
+}
+
+.harbour-booking-card__room-copy {
+  min-width: 0;
+}
+
+.harbour-booking-card__room-title,
+.harbour-booking-card__amenities {
+  display: flex;
+  align-items: center;
+}
+
+.harbour-booking-card__room-title {
+  flex-wrap: wrap;
+  gap: 0.45rem 0.65rem;
+}
+
+.harbour-booking-card__amenities {
+  gap: 0.38rem;
+}
+
+.harbour-booking-card__amenity {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(217, 174, 92, 0.42);
+  border-radius: 9px;
+  color: #f4d793;
+  background: rgba(217, 174, 92, 0.1);
+  cursor: help;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.harbour-booking-card__amenity:focus-visible {
+  outline: 2px solid #f4d793;
+  outline-offset: 2px;
 }
 
 [data-testid="stChatMessage"] .harbour-booking-card p {
@@ -420,8 +664,6 @@ html, body, [class*="css"] {
   font-weight: 650;
 }
 
-[data-testid="stChatMessage"] .harbour-booking-card__extras,
-[data-testid="stChatMessage"] .harbour-booking-card__contact,
 [data-testid="stChatMessage"] .harbour-booking-card__hotel {
   margin: 0;
   padding: 0 1.1rem 0.75rem;
@@ -429,13 +671,63 @@ html, body, [class*="css"] {
   line-height: 1.45 !important;
 }
 
-[data-testid="stChatMessage"] .harbour-booking-card__extras {
-  color: #e8c97f !important;
-}
-
 [data-testid="stChatMessage"] .harbour-booking-card__hotel {
   padding-bottom: 1rem;
   color: #aeb7c0 !important;
+}
+
+.harbour-booking-card__customer {
+  margin: 0 1.1rem 0.9rem;
+  padding: 0.82rem 0.9rem;
+  border: 1px solid rgba(217, 174, 92, 0.24);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.harbour-booking-card__customer-label {
+  display: block;
+  margin-bottom: 0.28rem;
+  color: #d9bd82;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__customer p {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #fffaf0 !important;
+  font-size: 1.05rem !important;
+  font-weight: 600;
+  line-height: 1.58 !important;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__cancelled-notice {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0 1.1rem 0.85rem;
+  padding: 0.72rem 0.78rem;
+  border: 1px solid rgba(229, 104, 91, 0.42);
+  border-radius: 10px;
+  color: #ffe3df !important;
+  background: rgba(180, 35, 24, 0.2);
+  font-size: 0.9rem !important;
+  font-weight: 650;
+  line-height: 1.4 !important;
+}
+
+.harbour-booking-card__cancelled-notice span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border-radius: 50%;
+  color: #191a1d;
+  background: #f09a90;
+  font-weight: 900;
 }
 
 [data-testid="stChatInput"] textarea:focus-visible {
@@ -647,5 +939,15 @@ html, body, [class*="css"] {
 
   .harbour-booking-card__facts {
     grid-template-columns: 1fr;
+  }
+
+  .harbour-information-card {
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .harbour-information-card__icon {
+    width: 46px;
+    height: 46px;
   }
 }
