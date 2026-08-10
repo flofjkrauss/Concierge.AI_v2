@@ -16,6 +16,7 @@ class FakeGraph:
         self.result = result
         self.state_values = state_values
         self.invocations: list[tuple[ConversationInput, dict[str, object]]] = []
+        self.updates: list[tuple[dict[str, object], dict[str, object]]] = []
 
     def invoke(
         self,
@@ -27,6 +28,15 @@ class FakeGraph:
 
     def get_state(self, config: dict[str, object]) -> object:
         return SimpleNamespace(values=self.state_values)
+
+    def update_state(
+        self,
+        config: dict[str, object],
+        values: dict[str, object],
+    ) -> object:
+        self.updates.append((config, values))
+        self.state_values.update(values)
+        return config
 
 
 def test_init_conversation_uses_same_session_id_for_input_and_thread() -> None:
@@ -94,3 +104,32 @@ def test_controller_returns_error_when_graph_has_no_response() -> None:
 
     assert isinstance(response, ErrorResponse)
     assert response.reason == "Conversation graph returned no response"
+
+
+def test_terminate_conversation_marks_known_session_inactive() -> None:
+    graph = FakeGraph(
+        {"response": None, "session_active": True},
+        {"session_active": True, "expected_interaction": object()},
+    )
+    controller = ConversationController(graph, UserInteraction())
+
+    controller.terminate_conversation("session-1")
+
+    assert graph.updates == [
+        (
+            {"configurable": {"thread_id": "session-1"}},
+            {"session_active": False, "expected_interaction": None},
+        )
+    ]
+
+
+def test_terminate_conversation_ignores_unknown_session() -> None:
+    graph = FakeGraph(
+        {"response": None, "session_active": False},
+        {},
+    )
+    controller = ConversationController(graph, UserInteraction())
+
+    controller.terminate_conversation("missing")
+
+    assert graph.updates == []

@@ -12,9 +12,15 @@ def test_translator_interface_is_abstract() -> None:
         TranslatorInterface()
 
 
-def test_none_translator_returns_same_message_and_english_language() -> None:
+def test_none_translator_reports_english_language() -> None:
     translator = NoneTranslator()
     message = Message("Hello")
 
     assert translator.determine(message) == "en"
+
+
+def test_none_translator_returns_original_message() -> None:
+    translator = NoneTranslator()
+    message = Message("Hello")
+
     assert translator.translate(message, "de") is message

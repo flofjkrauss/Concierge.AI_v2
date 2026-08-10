@@ -48,6 +48,15 @@ class ConversationGraph(Protocol):
 
         ...
 
+    def update_state(
+        self,
+        config: dict[str, object],
+        values: dict[str, object],
+    ) -> object:
+        """Apply a focused update to one checkpointed conversation."""
+
+        ...
+
 
 CHECKPOINT_TYPE_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("api.schemas.availability_schema", "AvailabilityResponse"),

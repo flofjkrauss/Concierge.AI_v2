@@ -1,7 +1,10 @@
+from datetime import date
+
 from conftest import InMemoryDatabase
 
 from domain.entities.booking import Booking
-from domain.services.cancel_booking import cancel_booking
+from domain.entities.customer import Customer
+from domain.services.cancel_booking import cancel_booking, cancel_booking_by_name
 from domain.value_objects.booking_status import BookingStatus
 
 
@@ -33,4 +36,38 @@ def test_cancel_booking_returns_none_when_not_found(
     database: InMemoryDatabase,
 ) -> None:
     assert cancel_booking("missing", database) is None
+    assert database.saved_bookings == []
+
+
+def test_cancel_booking_by_name_updates_matching_booking(
+    booking: Booking,
+    customer: Customer,
+    database: InMemoryDatabase,
+) -> None:
+    database.customers.append(customer)
+    database.bookings.append(booking)
+
+    result = cancel_booking_by_name(
+        customer.last_name,
+        customer.email,
+        booking.stay_period.check_in,
+        database,
+    )
+
+    assert result is booking
+    assert booking.status is BookingStatus.CANCELLED
+    assert database.saved_bookings == [booking]
+
+
+def test_cancel_booking_by_name_returns_none_when_not_found(
+    database: InMemoryDatabase,
+) -> None:
+    result = cancel_booking_by_name(
+        "Unknown",
+        "unknown@example.com",
+        date(2030, 6, 10),
+        database,
+    )
+
+    assert result is None
     assert database.saved_bookings == []

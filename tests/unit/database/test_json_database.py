@@ -91,11 +91,7 @@ def make_data_directory(tmp_path: Path) -> Path:
     )
     write_json(
         tmp_path / "hotel_information.json",
-        {
-            "information": [
-                {"topic": "wifi", "answer": "Wi-Fi is complimentary."}
-            ]
-        },
+        {"information": [{"topic": "wifi", "answer": "Wi-Fi is complimentary."}]},
     )
     return tmp_path
 
@@ -165,6 +161,39 @@ def test_get_booking_rejects_blank_id(json_database: JsonDatabase) -> None:
         json_database.get_booking(" ")
 
 
+def test_get_booking_by_name_returns_active_matching_booking(
+    json_database: JsonDatabase,
+) -> None:
+    booking = json_database.get_booking_by_name(
+        last_name="Morgan",
+        email="alex@example.com",
+        check_in=date(2030, 6, 10),
+    )
+
+    assert booking is not None
+    assert booking.booking_id == "booking-1"
+
+
+def test_get_booking_by_name_returns_none_for_unknown_customer(
+    json_database: JsonDatabase,
+) -> None:
+    assert (
+        json_database.get_booking_by_name(
+            last_name="Unknown",
+            email="unknown@example.com",
+            check_in=date(2030, 6, 10),
+        )
+        is None
+    )
+
+
+def test_mail_is_in_use_checks_persisted_customers(
+    json_database: JsonDatabase,
+) -> None:
+    assert json_database.mail_is_in_use("alex@example.com")
+    assert not json_database.mail_is_in_use("unknown@example.com")
+
+
 def test_save_booking_inserts_json_record(
     json_database: JsonDatabase,
     data_directory: Path,
@@ -198,13 +227,13 @@ def test_save_booking_updates_existing_record(
     booking.status = BookingStatus.CANCELLED
 
     json_database.save_booking(booking)
-    first_cancelled_at = json.loads(
-        (data_directory / "bookings.json").read_text()
-    )["bookings"][0]["cancelled_at"]
+    first_cancelled_at = json.loads((data_directory / "bookings.json").read_text())[
+        "bookings"
+    ][0]["cancelled_at"]
     json_database.save_booking(booking)
-    second_cancelled_at = json.loads(
-        (data_directory / "bookings.json").read_text()
-    )["bookings"][0]["cancelled_at"]
+    second_cancelled_at = json.loads((data_directory / "bookings.json").read_text())[
+        "bookings"
+    ][0]["cancelled_at"]
 
     assert first_cancelled_at is not None
     assert second_cancelled_at == first_cancelled_at
@@ -225,11 +254,14 @@ def test_customer_reads_lookup_and_identification(json_database: JsonDatabase) -
     assert customer is not None
     assert customer.full_name == "Alex Morgan"
     assert json_database.get_customer("missing") is None
-    assert json_database.identify_customer(
-        "Alex",
-        "Morgan",
-        "alex@example.com",
-    ) == customer
+    assert (
+        json_database.identify_customer(
+            "Alex",
+            "Morgan",
+            "alex@example.com",
+        )
+        == customer
+    )
     assert json_database.identify_customer("Alex", "Other", "alex@example.com") is None
 
 
@@ -274,9 +306,7 @@ def test_hotel_values_are_read_from_json(json_database: JsonDatabase) -> None:
     )
     assert json_database.get_information(InformationTopic.PETS) is None
     assert json_database.get_hotel_name() == "Harbour Light Hotel"
-    assert json_database.get_hotel_address() == (
-        "1 Harbour Way, 12345 Seaside, DE"
-    )
+    assert json_database.get_hotel_address() == ("1 Harbour Way, 12345 Seaside, DE")
 
 
 def test_get_information_rejects_empty_topic(json_database: JsonDatabase) -> None:

@@ -19,7 +19,7 @@ def test_create_customer_reuses_matching_customer(
     )
 
     assert result is customer
-    assert database.saved_customers == [customer]
+    assert database.saved_customers == []
 
 
 def test_create_customer_builds_and_saves_new_customer(
@@ -40,3 +40,21 @@ def test_get_customer_delegates_to_database(
     database.customers.append(customer)
 
     assert get_customer(customer.customer_id, database) is customer
+
+
+def test_create_customer_rejects_email_owned_by_different_customer(
+    customer: Customer,
+    database: InMemoryDatabase,
+) -> None:
+    database.customers.append(customer)
+
+    result = create_customer(
+        "Sam",
+        "Lee",
+        customer.email,
+        "de",
+        database,
+    )
+
+    assert result is None
+    assert database.saved_customers == []

@@ -41,9 +41,9 @@ class InformationExtractor:
                     content=date(2027, 8, 8)
                 )
         check_out = Information(
-                            information_field=InformationField.CHECK_OUT,
-                            content=date(2027, 8, 11)
-                        )
+                    information_field=InformationField.CHECK_OUT,
+                    content=date(2027, 8, 11)
+                )
 
         guest_count = Information(
              information_field=InformationField.GUEST_COUNT,
