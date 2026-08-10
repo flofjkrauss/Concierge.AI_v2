@@ -7,7 +7,7 @@ from conversation.graph.builder import (
 )
 from conversation.information_extrator import InformationExtractor
 from conversation.intent_classifier import IntentClassifier
-from conversation.models.translation.interface import NoneTranslator
+from conversation.models.translation.m2m100_translator import M2M100Translator
 from conversation.user_interaction import UserInteraction
 from database.interface import DatabaseInterface
 
@@ -18,7 +18,7 @@ def init(database: DatabaseInterface) -> ConversationController:
     if not isinstance(database, DatabaseInterface):
         raise TypeError("Invalid database parameter for conversation controller init")
 
-    translator = NoneTranslator()
+    translator = M2M100Translator()
     intent_classifier = IntentClassifier()
     information_extractor = InformationExtractor()
     user_interaction = UserInteraction()
