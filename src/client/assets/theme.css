@@ -1,0 +1,450 @@
+:root {
+  color-scheme: light;
+  --harbour-blue: #2467f0;
+  --harbour-blue-dark: #1749b5;
+  --harbour-ink: #13233f;
+  --harbour-muted: #64748b;
+  --harbour-surface: #ffffff;
+  --harbour-panel: #f7f9fc;
+  --harbour-wash: #eef3f9;
+  --harbour-gold: #f0ad32;
+  --harbour-danger: #b42318;
+  --harbour-border: #dbe4f0;
+  --harbour-content-width: 880px;
+  --harbour-shell-width: 920px;
+  --harbour-header-height: 77px;
+  --harbour-footer-height: 91px;
+  --harbour-chrome: #0d1117;
+  --harbour-chrome-deep: #080b10;
+  --harbour-input: #151a21;
+  --harbour-input-deep: #0f141a;
+  --harbour-input-text: #f5f1e8;
+  --harbour-input-muted: #aaa69d;
+  --harbour-gold-soft: #d9ae5c;
+}
+
+html, body, [class*="css"] {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.stApp {
+  color: var(--harbour-ink);
+  background:
+    linear-gradient(rgba(8, 22, 42, 0.36), rgba(8, 22, 42, 0.48)),
+    url("__HARBOUR_BACKGROUND__") center center / cover fixed;
+}
+
+.stApp::before {
+  position: fixed;
+  inset: 0 auto 0 50%;
+  z-index: 0;
+  width: min(100%, 980px);
+  border-right: 1px solid rgba(196, 209, 226, 0.92);
+  border-left: 1px solid rgba(196, 209, 226, 0.92);
+  background: rgba(247, 249, 252, 0.97);
+  box-shadow: 0 0 70px rgba(4, 17, 35, 0.3);
+  transform: translateX(-50%);
+  content: "";
+}
+
+[data-testid="stAppViewContainer"] {
+  z-index: 1;
+  background: transparent !important;
+}
+
+[data-testid="stHeader"] {
+  height: 0;
+  background: transparent;
+}
+
+[data-testid="stToolbar"], footer {
+  display: none;
+}
+
+[data-testid="stAppScrollToBottomContainer"] {
+  position: fixed;
+  inset: var(--harbour-header-height) 0 var(--harbour-footer-height);
+  height: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scroll-padding-block: 1rem;
+}
+
+.block-container {
+  width: min(100%, var(--harbour-shell-width)) !important;
+  max-width: var(--harbour-shell-width) !important;
+  min-height: 100%;
+  padding: 1rem 1.25rem 1.5rem !important;
+}
+
+[data-testid="stLayoutWrapper"]:has(> .st-key-hotel_header) {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 110;
+  width: 100%;
+  height: var(--harbour-header-height);
+  border-bottom: 1px solid rgba(201, 151, 67, 0.48);
+  background-color: var(--harbour-chrome);
+  background-image:
+    radial-gradient(ellipse at center, rgba(50, 54, 60, 0.42), transparent 64%),
+    url("__HARBOUR_CHROME_PATTERN__");
+  background-position: center, center 48%;
+  background-size: auto, cover;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(14px);
+}
+
+.st-key-hotel_header {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.harbour-header-content {
+  display: flex;
+  width: min(calc(100% - 2.5rem), var(--harbour-content-width));
+  height: 100%;
+  align-items: center;
+  margin-inline: auto;
+}
+
+.harbour-brand {
+  display: flex;
+  align-items: center;
+}
+
+.harbour-brand img {
+  width: min(100%, 340px);
+  height: 54px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+[data-testid="stChatMessage"] {
+  color: var(--harbour-ink);
+  margin: 0.55rem 0;
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--harbour-border);
+  border-radius: 18px;
+  background: var(--harbour-surface);
+  box-shadow: 0 10px 34px rgba(28, 50, 84, 0.05);
+}
+
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] li {
+  font-size: 1.125rem;
+  line-height: 1.62;
+}
+
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] h1,
+[data-testid="stChatMessage"] h2,
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] h4,
+[data-testid="stChatMessage"] h5,
+[data-testid="stChatMessage"] h6 {
+  color: var(--harbour-ink) !important;
+}
+
+[data-testid="stChatMessage"] [data-testid="stCaptionContainer"] p {
+  font-size: 0.98rem !important;
+  line-height: 1.48;
+  color: var(--harbour-muted) !important;
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) {
+  width: calc(100% - clamp(1rem, 7vw, 5rem));
+  margin-left: clamp(1rem, 7vw, 5rem);
+  border-color: #cbdcfb;
+  background: #eaf1ff;
+}
+
+[data-testid="stChatMessage"] p:last-child {
+  margin-bottom: 0;
+}
+
+[class*="st-key-room_card_"] {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border-color: var(--harbour-border) !important;
+  border-top: 3px solid var(--harbour-gold) !important;
+  border-radius: 16px !important;
+  background: var(--harbour-surface);
+  box-shadow: 0 8px 24px rgba(28, 50, 84, 0.07);
+}
+
+[class*="st-key-room_grid_"] [data-testid="stHorizontalBlock"] {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 1rem !important;
+  align-items: stretch;
+  overflow-x: auto;
+  padding: 0.1rem 0.1rem 0.75rem;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  scrollbar-color: rgba(36, 103, 240, 0.42) transparent;
+  scrollbar-width: thin;
+}
+
+[class*="st-key-room_grid_"] [data-testid="stColumn"] {
+  display: flex;
+  width: calc((100% - 3rem) / 4) !important;
+  min-width: calc((100% - 3rem) / 4) !important;
+  flex: 0 0 calc((100% - 3rem) / 4) !important;
+  scroll-snap-align: start;
+}
+
+[class*="st-key-room_grid_"] [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+  width: 100%;
+}
+
+[class*="st-key-room_grid_"] [data-testid="stLayoutWrapper"]:has(> [class*="st-key-room_card_"]) {
+  height: 100%;
+}
+
+[class*="st-key-room_card_"] > [data-testid="stElementContainer"]:last-child {
+  margin-top: auto;
+}
+
+[class*="st-key-room_card_"] [data-testid="stImage"] img {
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+[class*="st-key-room_card_"] h4 {
+  font-size: 1.2rem !important;
+  line-height: 1.3;
+}
+
+[class*="st-key-room_card_"] .stButton button {
+  height: 54px;
+  min-height: 54px;
+}
+
+.stButton button {
+  min-height: 44px;
+  border-color: #b9c8dc;
+  border-radius: 11px;
+  color: var(--harbour-ink);
+  background: var(--harbour-surface);
+  font-weight: 650;
+}
+
+.stButton button p {
+  font-size: 1rem !important;
+  line-height: 1.2 !important;
+}
+
+.stButton button[kind="primary"],
+.stButton button[kind="primary"] p {
+  border-color: var(--harbour-blue);
+  color: #ffffff !important;
+  background: var(--harbour-blue);
+}
+
+.stButton button[kind="primary"]:hover {
+  border-color: var(--harbour-blue-dark);
+  background: var(--harbour-blue-dark);
+}
+
+[class*="st-key-cancel_booking_"] button,
+[class*="st-key-cancel_booking_"] button p {
+  border-color: var(--harbour-danger) !important;
+  color: #ffffff !important;
+  background: var(--harbour-danger) !important;
+}
+
+.stButton button:focus-visible {
+  outline: 3px solid rgba(36, 103, 240, 0.28) !important;
+  outline-offset: 2px;
+}
+
+[data-testid="stChatInput"] textarea:focus-visible {
+  outline: 3px solid rgba(217, 174, 92, 0.34) !important;
+  outline-offset: 2px;
+}
+
+[data-testid="stBottomBlockContainer"] {
+  width: min(100%, var(--harbour-shell-width)) !important;
+  max-width: var(--harbour-shell-width) !important;
+  margin-inline: auto;
+  padding: 0.75rem 1.25rem 1rem !important;
+  background: transparent;
+}
+
+[data-testid="stBottom"] {
+  position: fixed !important;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  height: var(--harbour-footer-height);
+  border-top: 1px solid rgba(201, 151, 67, 0.42);
+  background-color: var(--harbour-chrome-deep) !important;
+  background-image:
+    radial-gradient(ellipse at center, rgba(45, 48, 53, 0.4), transparent 66%),
+    url("__HARBOUR_CHROME_PATTERN__") !important;
+  background-position: center, center 58% !important;
+  background-size: auto, cover !important;
+  background-repeat: no-repeat !important;
+  backdrop-filter: blur(14px);
+}
+
+[data-testid="stBottom"] > div {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  background: transparent !important;
+}
+
+[data-testid="stChatInput"] {
+  overflow: hidden;
+  border: 1px solid rgba(217, 174, 92, 0.64);
+  border-radius: 17px;
+  background: linear-gradient(180deg, var(--harbour-input), var(--harbour-input-deep)) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    inset 0 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-testid="stChatInput"] > div {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stChatInput"] > div > div {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  background: transparent !important;
+}
+
+[data-testid="stChatInput"] > div > div > :first-child {
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+[data-testid="stChatInput"] > div > div > :last-child {
+  width: 44px !important;
+  min-width: 44px !important;
+  flex: 0 0 44px !important;
+}
+
+[data-testid="stChatInput"] [data-baseweb="textarea"],
+[data-testid="stChatInput"] [data-baseweb="base-input"],
+[data-testid="stChatInput"] textarea {
+  border-color: transparent !important;
+  color: var(--harbour-input-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stChatInput"] textarea {
+  caret-color: #f3ca76 !important;
+  font-size: 1.125rem !important;
+  line-height: 1.5 !important;
+}
+
+[data-testid="stChatInput"] textarea::placeholder {
+  color: var(--harbour-input-muted) !important;
+  opacity: 1;
+}
+
+[data-testid="stChatInputSubmitButton"] {
+  position: static !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 0.2rem 0 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(217, 174, 92, 0.34) !important;
+  border-radius: 11px !important;
+  color: #817761 !important;
+  background: rgba(217, 174, 92, 0.08) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stChatInputSubmitButton"]:not(:disabled) {
+  border-color: #edcc83 !important;
+  color: #11151a !important;
+  background: var(--harbour-gold-soft) !important;
+  box-shadow: 0 4px 14px rgba(217, 174, 92, 0.26) !important;
+}
+
+[data-testid="stChatInputSubmitButton"]:not(:disabled):hover {
+  border-color: #fff0b7 !important;
+  background: #e7c574 !important;
+}
+
+[data-testid="stChatInputSubmitButton"] svg {
+  color: currentColor !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+[data-testid="stSpinner"] {
+  color: var(--harbour-muted);
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  [class*="st-key-room_grid_"] [data-testid="stColumn"] {
+    width: calc((100% - 2rem) / 3) !important;
+    min-width: calc((100% - 2rem) / 3) !important;
+    flex-basis: calc((100% - 2rem) / 3) !important;
+  }
+}
+
+@media (max-width: 700px) {
+  :root {
+    --harbour-header-height: 68px;
+    --harbour-footer-height: 91px;
+  }
+
+  .block-container {
+    padding: 0.8rem 0.8rem 1.25rem !important;
+  }
+
+  [data-testid="stLayoutWrapper"]:has(> .st-key-hotel_header) {
+    width: 100%;
+  }
+
+  .st-key-hotel_header {
+    margin: 0;
+    padding: 0;
+  }
+
+  .harbour-header-content {
+    width: calc(100% - 1.6rem);
+  }
+
+  .harbour-brand img {
+    width: min(100%, 250px);
+    height: 48px;
+  }
+
+  [class*="st-key-room_grid_"] [data-testid="stColumn"] {
+    width: min(82vw, 19rem) !important;
+    min-width: min(82vw, 19rem) !important;
+    flex-basis: min(82vw, 19rem) !important;
+  }
+
+  [data-testid="stChatMessage"] {
+    padding: 0.85rem;
+    border-radius: 15px;
+  }
+
+  [data-testid="stBottomBlockContainer"] {
+    padding-inline: 0.8rem !important;
+  }
+}
