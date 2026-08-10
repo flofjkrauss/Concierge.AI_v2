@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import base64
 from decimal import Decimal, InvalidOperation
+from html import escape
 from pathlib import Path
 
 import streamlit as st
 
 from client.components.api import ConversationResponse, ResponseKind
-from client.components.models import ChatEntry, Shortcut
+from client.components.models import BookingCardData, ChatEntry, Shortcut
 
 CATEGORY_LABELS = {
     "single": "Single Room",
@@ -217,8 +218,15 @@ def _render_confirmation(
     actionable: bool,
 ) -> Shortcut | None:
     data = response.structured_data("data") or {}
-    _render_confirmation_summary(data)
-    destructive = isinstance(data.get("booking_id"), str)
+    booking = BookingCardData.from_mapping(data)
+    destructive = booking is not None and booking.is_cancellation_candidate
+    if booking is not None:
+        _render_booking_card(
+            booking,
+            title="Booking to cancel" if destructive else "Booking preview",
+            eyebrow="Please review" if destructive else "Ready to confirm",
+            destructive=destructive,
+        )
 
     primary_label = "Cancel booking" if destructive else "Book room"
     secondary_label = "Keep booking" if destructive else "Not now"
@@ -250,52 +258,125 @@ def _render_confirmation(
     return None
 
 
-def _render_confirmation_summary(data: dict[str, object]) -> None:
-    category = _information_value(data, "room_category")
-    check_in = _information_value(data, "check_in")
-    check_out = _information_value(data, "check_out")
-    guests = _information_value(data, "guest_count")
-
-    summary: list[str] = []
-    if isinstance(category, str):
-        summary.append(CATEGORY_LABELS.get(category, category.title()))
-    if isinstance(check_in, str) and isinstance(check_out, str):
-        summary.append(f"{check_in} to {check_out}")
-    if isinstance(guests, int):
-        summary.append(f"{guests} {'guest' if guests == 1 else 'guests'}")
-    if summary:
-        st.caption(" · ".join(summary))
-
-
 def _render_booking_details(response: ConversationResponse) -> None:
     content = response.structured_data("content")
     if content is None:
         return
-
-    category = content.get("room_category")
-    arrival = content.get("arrival")
-    departure = content.get("departure")
-    guests = content.get("guests")
-    total = _format_money(content.get("total_price"))
-
-    details: list[str] = []
-    if isinstance(category, str):
-        details.append(CATEGORY_LABELS.get(category, category.title()))
-    if isinstance(arrival, str) and isinstance(departure, str):
-        details.append(f"{arrival} to {departure}")
-    if isinstance(guests, int):
-        details.append(f"{guests} {'guest' if guests == 1 else 'guests'}")
-    if total is not None:
-        details.append(f"{total} total")
-    if details:
-        st.caption(" · ".join(details))
+    booking = BookingCardData.from_mapping(content)
+    if booking is None:
+        return
+    cancelled = booking.status == "cancelled"
+    _render_booking_card(
+        booking,
+        title="Cancelled booking" if cancelled else "Your booking",
+        eyebrow="Cancellation complete" if cancelled else "Booking details",
+        destructive=cancelled,
+    )
 
 
-def _information_value(data: dict[str, object], key: str) -> object | None:
-    value = data.get(key)
-    if isinstance(value, dict):
-        return value.get("content")
-    return value
+def _render_booking_card(
+    booking: BookingCardData,
+    *,
+    title: str,
+    eyebrow: str,
+    destructive: bool,
+) -> None:
+    """Render the shared booking summary used throughout the conversation."""
+
+    status = (booking.status or "pending").replace("_", " ").title()
+    category = booking.room_category or "room"
+    room_label = CATEGORY_LABELS.get(
+        category.casefold(),
+        category.replace("_", " ").title(),
+    )
+    dates = _date_range(booking.check_in, booking.check_out)
+    total = _format_money(booking.total_price)
+    guest_count = (
+        f"{booking.guest_count} {'guest' if booking.guest_count == 1 else 'guests'}"
+        if booking.guest_count is not None
+        else None
+    )
+
+    facts = [
+        _booking_fact("Stay", dates),
+        _booking_fact("Guests", guest_count),
+        _booking_fact("Total", total),
+    ]
+    extras: list[str] = []
+    if booking.breakfast is True:
+        extras.append("Breakfast included")
+    elif booking.breakfast is False:
+        extras.append("Without breakfast")
+    if booking.accessible is True:
+        extras.append("Accessible room requested")
+
+    contact_parts = [
+        part for part in (booking.guest_name, booking.email, booking.phone) if part
+    ]
+    hotel_parts = [
+        part for part in (booking.hotel_name, booking.hotel_address) if part
+    ]
+    reference = f"Reference {booking.booking_id}" if booking.booking_id else None
+    modifier = " harbour-booking-card--danger" if destructive else ""
+    facts_html = "".join(fact for fact in facts if fact)
+    extras_html = _optional_line(
+        " · ".join(extras) if extras else None,
+        "harbour-booking-card__extras",
+    )
+    contact_html = _optional_line(
+        " · ".join(contact_parts) if contact_parts else None,
+        "harbour-booking-card__contact",
+    )
+    hotel_html = _optional_line(
+        " · ".join(hotel_parts) if hotel_parts else None,
+        "harbour-booking-card__hotel",
+    )
+    card = (
+        f'<section class="harbour-booking-card{modifier}">'
+        '<div class="harbour-booking-card__header">'
+        '<div>'
+        f'<span class="harbour-booking-card__eyebrow">{escape(eyebrow)}</span>'
+        f'<h4>{escape(title)}</h4>'
+        '</div>'
+        f'<span class="harbour-booking-card__status">{escape(status)}</span>'
+        '</div>'
+        '<div class="harbour-booking-card__room">'
+        '<span class="harbour-booking-card__anchor" aria-hidden="true">✦</span>'
+        '<div>'
+        f'<strong>{escape(room_label)}</strong>'
+        f'{_optional_line(reference, "harbour-booking-card__reference")}'
+        '</div>'
+        '</div>'
+        f'<dl class="harbour-booking-card__facts">{facts_html}</dl>'
+        f"{extras_html}"
+        f"{contact_html}"
+        f"{hotel_html}"
+        '</section>'
+    )
+    st.markdown(card, unsafe_allow_html=True)
+
+
+def _date_range(check_in: str | None, check_out: str | None) -> str | None:
+    if check_in is not None and check_out is not None:
+        return f"{check_in} – {check_out}"
+    return check_in or check_out
+
+
+def _booking_fact(label: str, value: str | None) -> str:
+    if value is None:
+        return ""
+    return (
+        '<div>'
+        f'<dt>{escape(label)}</dt>'
+        f'<dd>{escape(value)}</dd>'
+        '</div>'
+    )
+
+
+def _optional_line(value: str | None, class_name: str) -> str:
+    if value is None:
+        return ""
+    return f'<p class="{class_name}">{escape(value)}</p>'
 
 
 def _format_money(value: object) -> str | None:

@@ -2,14 +2,14 @@
   color-scheme: light;
   --harbour-blue: #2467f0;
   --harbour-blue-dark: #1749b5;
-  --harbour-ink: #13233f;
-  --harbour-muted: #64748b;
-  --harbour-surface: #ffffff;
-  --harbour-panel: #f7f9fc;
-  --harbour-wash: #eef3f9;
+  --harbour-ink: #18212b;
+  --harbour-muted: #68717e;
+  --harbour-surface: #f4f0e7;
+  --harbour-panel: #171d24;
+  --harbour-wash: #e8e0d2;
   --harbour-gold: #f0ad32;
   --harbour-danger: #b42318;
-  --harbour-border: #dbe4f0;
+  --harbour-border: #d0c09d;
   --harbour-content-width: 880px;
   --harbour-shell-width: 920px;
   --harbour-header-height: 77px;
@@ -40,10 +40,10 @@ html, body, [class*="css"] {
   inset: 0 auto 0 50%;
   z-index: 0;
   width: min(100%, 980px);
-  border-right: 1px solid rgba(196, 209, 226, 0.92);
-  border-left: 1px solid rgba(196, 209, 226, 0.92);
-  background: rgba(247, 249, 252, 0.97);
-  box-shadow: 0 0 70px rgba(4, 17, 35, 0.3);
+  border-right: 1px solid rgba(197, 157, 87, 0.42);
+  border-left: 1px solid rgba(197, 157, 87, 0.42);
+  background: rgba(23, 29, 36, 0.96);
+  box-shadow: 0 0 76px rgba(2, 8, 17, 0.54);
   transform: translateX(-50%);
   content: "";
 }
@@ -75,7 +75,7 @@ html, body, [class*="css"] {
   width: min(100%, var(--harbour-shell-width)) !important;
   max-width: var(--harbour-shell-width) !important;
   min-height: 100%;
-  padding: 1rem 1.25rem 1.5rem !important;
+  padding: 1rem 1.25rem 2.75rem !important;
 }
 
 [data-testid="stLayoutWrapper"]:has(> .st-key-hotel_header) {
@@ -131,7 +131,7 @@ html, body, [class*="css"] {
   border: 1px solid var(--harbour-border);
   border-radius: 18px;
   background: var(--harbour-surface);
-  box-shadow: 0 10px 34px rgba(28, 50, 84, 0.05);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
 }
 
 [data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p,
@@ -159,12 +159,27 @@ html, body, [class*="css"] {
 [data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) {
   width: calc(100% - clamp(1rem, 7vw, 5rem));
   margin-left: clamp(1rem, 7vw, 5rem);
-  border-color: #cbdcfb;
-  background: #eaf1ff;
+  border-color: rgba(211, 174, 104, 0.52);
+  background: #1a2a3b;
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) p,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h1,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h2,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h3,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h4,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) li {
+  color: #f7f3ea !important;
 }
 
 [data-testid="stChatMessage"] p:last-child {
   margin-bottom: 0;
+}
+
+[data-testid="stAppScrollToBottomContainer"]
+  [data-testid="stVerticalBlock"]
+  > [data-testid="stLayoutWrapper"]:last-child:has(> [data-testid="stChatMessage"]) {
+  margin-bottom: 1.25rem;
 }
 
 [class*="st-key-room_card_"] {
@@ -175,8 +190,8 @@ html, body, [class*="css"] {
   border-color: var(--harbour-border) !important;
   border-top: 3px solid var(--harbour-gold) !important;
   border-radius: 16px !important;
-  background: var(--harbour-surface);
-  box-shadow: 0 8px 24px rgba(28, 50, 84, 0.07);
+  background: #eee7da;
+  box-shadow: 0 8px 24px rgba(26, 31, 38, 0.13);
 }
 
 [class*="st-key-room_grid_"] [data-testid="stHorizontalBlock"] {
@@ -188,7 +203,7 @@ html, body, [class*="css"] {
   padding: 0.1rem 0.1rem 0.75rem;
   scroll-behavior: smooth;
   scroll-snap-type: x proximity;
-  scrollbar-color: rgba(36, 103, 240, 0.42) transparent;
+  scrollbar-color: rgba(217, 174, 92, 0.66) transparent;
   scrollbar-width: thin;
 }
 
@@ -230,28 +245,35 @@ html, body, [class*="css"] {
 
 .stButton button {
   min-height: 44px;
-  border-color: #b9c8dc;
+  border-color: #a99a7c;
   border-radius: 11px;
-  color: var(--harbour-ink);
-  background: var(--harbour-surface);
+  color: #f6f1e7;
+  background: #263241;
   font-weight: 650;
+}
+
+.stButton button:hover {
+  border-color: #d5b873;
+  color: #ffffff;
+  background: #344355;
 }
 
 .stButton button p {
   font-size: 1rem !important;
   line-height: 1.2 !important;
+  color: inherit !important;
 }
 
 .stButton button[kind="primary"],
 .stButton button[kind="primary"] p {
-  border-color: var(--harbour-blue);
-  color: #ffffff !important;
-  background: var(--harbour-blue);
+  border-color: #d9ae5c;
+  color: #12171d !important;
+  background: #d9ae5c;
 }
 
 .stButton button[kind="primary"]:hover {
-  border-color: var(--harbour-blue-dark);
-  background: var(--harbour-blue-dark);
+  border-color: #efd18a;
+  background: #e7c574;
 }
 
 [class*="st-key-cancel_booking_"] button,
@@ -262,8 +284,158 @@ html, body, [class*="css"] {
 }
 
 .stButton button:focus-visible {
-  outline: 3px solid rgba(36, 103, 240, 0.28) !important;
+  outline: 3px solid rgba(217, 174, 92, 0.38) !important;
   outline-offset: 2px;
+}
+
+.harbour-booking-card {
+  overflow: hidden;
+  margin: 1rem 0 1.1rem;
+  border: 1px solid rgba(217, 174, 92, 0.5);
+  border-top: 3px solid var(--harbour-gold-soft);
+  border-radius: 16px;
+  color: #f6f1e7;
+  background:
+    radial-gradient(circle at 92% 5%, rgba(217, 174, 92, 0.13), transparent 35%),
+    linear-gradient(145deg, #202a35, #121920);
+  box-shadow: 0 14px 32px rgba(10, 15, 21, 0.24);
+}
+
+.harbour-booking-card--danger {
+  border-color: rgba(180, 35, 24, 0.7);
+  border-top-color: var(--harbour-danger);
+}
+
+.harbour-booking-card__header,
+.harbour-booking-card__room {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.harbour-booking-card__header {
+  padding: 1rem 1.1rem 0.9rem;
+  border-bottom: 1px solid rgba(217, 174, 92, 0.2);
+}
+
+.harbour-booking-card__eyebrow {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #d9bd82;
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card h4 {
+  margin: 0;
+  color: #fffaf0 !important;
+  font-size: 1.22rem;
+  line-height: 1.25;
+}
+
+.harbour-booking-card__status {
+  flex: 0 0 auto;
+  margin-left: 1rem;
+  padding: 0.35rem 0.62rem;
+  border: 1px solid rgba(217, 174, 92, 0.46);
+  border-radius: 999px;
+  color: #f4d793;
+  background: rgba(217, 174, 92, 0.1);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.harbour-booking-card--danger .harbour-booking-card__status {
+  border-color: rgba(255, 159, 148, 0.42);
+  color: #ffb8af;
+  background: rgba(180, 35, 24, 0.16);
+}
+
+.harbour-booking-card__room {
+  justify-content: flex-start;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem 0.6rem;
+}
+
+.harbour-booking-card__anchor {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 1px solid rgba(217, 174, 92, 0.38);
+  border-radius: 12px;
+  color: #f2ce80;
+  background: rgba(217, 174, 92, 0.09);
+  font-size: 1.25rem;
+}
+
+.harbour-booking-card__room strong {
+  color: #fffaf0;
+  font-size: 1.08rem;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card p {
+  color: #d8d8d5 !important;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__reference {
+  margin: 0.14rem 0 0;
+  color: #aeb7c0 !important;
+  font-size: 0.82rem !important;
+}
+
+.harbour-booking-card__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.55rem 1.1rem 0.9rem;
+}
+
+.harbour-booking-card__facts div {
+  min-width: 0;
+  padding: 0.68rem 0.72rem;
+  border: 1px solid rgba(217, 174, 92, 0.17);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.harbour-booking-card__facts dt {
+  margin-bottom: 0.18rem;
+  color: #aeb7c0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.harbour-booking-card__facts dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #fffaf0;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__extras,
+[data-testid="stChatMessage"] .harbour-booking-card__contact,
+[data-testid="stChatMessage"] .harbour-booking-card__hotel {
+  margin: 0;
+  padding: 0 1.1rem 0.75rem;
+  font-size: 0.86rem !important;
+  line-height: 1.45 !important;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__extras {
+  color: #e8c97f !important;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__hotel {
+  padding-bottom: 1rem;
+  color: #aeb7c0 !important;
 }
 
 [data-testid="stChatInput"] textarea:focus-visible {
@@ -305,6 +477,7 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stChatInput"] {
+  position: relative;
   overflow: hidden;
   border: 1px solid rgba(217, 174, 92, 0.64);
   border-radius: 17px;
@@ -321,9 +494,13 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stChatInput"] > div > div {
+  position: relative !important;
+  height: 35px !important;
+  min-height: 35px !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 0.5rem !important;
+  gap: 0 !important;
+  padding-right: 3.35rem !important;
   background: transparent !important;
 }
 
@@ -333,10 +510,24 @@ html, body, [class*="css"] {
   flex: 1 1 auto !important;
 }
 
-[data-testid="stChatInput"] > div > div > :last-child {
-  width: 44px !important;
-  min-width: 44px !important;
-  flex: 0 0 44px !important;
+[data-testid="stChatInput"] > div > div > :has([data-testid="stChatInputSubmitButton"]) {
+  position: static !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  flex: 0 0 0 !important;
+}
+
+[data-testid="stChatInput"] > div > div:has([data-testid="InputInstructions"]) {
+  padding-right: 7rem !important;
+}
+
+[data-testid="stChatInput"] [data-testid="InputInstructions"] {
+  position: absolute !important;
+  top: 50% !important;
+  right: 3.35rem !important;
+  transform: translateY(-50%) !important;
+  white-space: nowrap;
+  color: var(--harbour-input-muted) !important;
 }
 
 [data-testid="stChatInput"] [data-baseweb="textarea"],
@@ -349,6 +540,9 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stChatInput"] textarea {
+  height: 35px !important;
+  max-height: 35px !important;
+  overflow-y: auto !important;
   caret-color: #f3ca76 !important;
   font-size: 1.125rem !important;
   line-height: 1.5 !important;
@@ -360,18 +554,21 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stChatInputSubmitButton"] {
-  position: static !important;
+  position: absolute !important;
+  top: 50% !important;
+  right: 0.35rem !important;
+  z-index: 3;
   width: 40px !important;
   min-width: 40px !important;
   height: 40px !important;
   min-height: 40px !important;
-  margin: 0 0.2rem 0 0 !important;
+  margin: 0 !important;
   padding: 0 !important;
   border: 1px solid rgba(217, 174, 92, 0.34) !important;
   border-radius: 11px !important;
   color: #817761 !important;
   background: rgba(217, 174, 92, 0.08) !important;
-  transform: none !important;
+  transform: translateY(-50%) !important;
   box-shadow: none !important;
 }
 
@@ -394,7 +591,7 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stSpinner"] {
-  color: var(--harbour-muted);
+  color: #dfc079;
 }
 
 @media (min-width: 701px) and (max-width: 900px) {
@@ -412,7 +609,7 @@ html, body, [class*="css"] {
   }
 
   .block-container {
-    padding: 0.8rem 0.8rem 1.25rem !important;
+    padding: 0.8rem 0.8rem 2rem !important;
   }
 
   [data-testid="stLayoutWrapper"]:has(> .st-key-hotel_header) {
@@ -446,5 +643,9 @@ html, body, [class*="css"] {
 
   [data-testid="stBottomBlockContainer"] {
     padding-inline: 0.8rem !important;
+  }
+
+  .harbour-booking-card__facts {
+    grid-template-columns: 1fr;
   }
 }
