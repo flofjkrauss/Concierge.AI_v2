@@ -22,21 +22,33 @@ def test_booking_request_includes_booking_and_customer_fields() -> None:
         InformationField.FIRST_NAME,
         InformationField.LAST_NAME,
         InformationField.EMAIL,
+        InformationField.ROOM_CATEGORY,
+        InformationField.PHONE,
+        InformationField.PREFERRED_LANG,
     ]
 
 
-def test_lookup_cancellation_and_information_have_single_required_field() -> None:
+def test_lookup_and_cancellation_use_guest_identity_and_check_in() -> None:
     assert IntentInformationMapper.determine_fields(Intent.BOOKING_CHECK) == [
-        InformationField.BOOKING_ID
+        InformationField.LAST_NAME,
+        InformationField.EMAIL,
+        InformationField.CHECK_IN,
     ]
     assert IntentInformationMapper.determine_fields(Intent.BOOKING_CANCELLATION) == [
-        InformationField.BOOKING_ID
+        InformationField.LAST_NAME,
+        InformationField.EMAIL,
+        InformationField.CHECK_IN,
     ]
+
+
+def test_information_request_requires_topic() -> None:
     assert IntentInformationMapper.determine_fields(Intent.INFORMATION_REQUEST) == [
         InformationField.INFORMATION_TOPIC
     ]
 
 
 def test_non_business_intents_require_no_information() -> None:
-    assert IntentInformationMapper.determine_fields(Intent.CONVERSATION_INITIATION) == []
+    assert (
+        IntentInformationMapper.determine_fields(Intent.CONVERSATION_INITIATION) == []
+    )
     assert IntentInformationMapper.determine_fields(Intent.UNKNOWN) == []

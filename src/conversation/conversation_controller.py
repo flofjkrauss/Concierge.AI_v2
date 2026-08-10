@@ -71,6 +71,23 @@ class ConversationController:
         LOG_MSG.debug(f"Message processed: {result}")
         return self._response_from(result)
 
+    def terminate_conversation(self, session_id: str) -> None:
+        """Mark one known conversation inactive without invoking the NLP flow."""
+
+        config = self._config(session_id)
+        snapshot = cast(StateSnapshot, self._graph.get_state(config))
+        if not snapshot.values:
+            return
+        if snapshot.values.get("session_active") is not False:
+            self._graph.update_state(
+                config,
+                {
+                    "session_active": False,
+                    "expected_interaction": None,
+                },
+            )
+        LOG_MSG.debug(f"Conversation terminated. Session ID: {session_id}")
+
 
     @staticmethod
     def _config(session_id: str) -> dict[str, object]:

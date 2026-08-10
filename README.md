@@ -55,3 +55,52 @@ flowchart TD
     class RESPONSE,RETURN,OPTIONS,SUMMARY output;
     class CONFIRM,BOUNDARY decision;
 ```
+
+## Streamlit concierge client
+
+Install the project and its client dependency once:
+
+```shell
+python -m pip install -e .
+```
+
+Start the API and Streamlit client together from the repository root:
+
+```shell
+python run.py
+```
+
+The Streamlit server address, port, headless mode, development mode, and
+usage-statistics setting are explicit in `ApplicationSettings` as
+`streamlit_host`, `streamlit_port`, `streamlit_headless`,
+`streamlit_development_mode`, and `streamlit_gather_usage_stats`. The default
+client URL is `http://127.0.0.1:8501`.
+
+The launcher supervises the API and client as one process pair. If either
+process exits during development, the other process is stopped and both are
+started again so their runtime state stays synchronized.
+
+To run only the guest client in a separate terminal, use:
+
+```shell
+python -m streamlit run src/client/app.py --global.developmentMode false --server.address 127.0.0.1 --server.port 8501
+```
+
+The client uses `http://127.0.0.1:8000/api/conversation` by default. Set
+`CONCIERGE_API_URL` to another absolute URL ending in `/api/conversation` when
+the API is hosted elsewhere. The client rejects URLs outside that route family.
+
+Opening the page initializes a session automatically. If the guest submits a
+message after that session has ended or before a session ID is available, the
+client initializes a fresh session and then sends the already-entered message.
+Messages, room-card selections, confirmations, inactivity termination, and
+tab-close termination all use endpoints below `/api/conversation`. A lightweight
+Streamlit fragment checks for 10 minutes without a submitted message or shortcut
+and then closes the session.
+
+Tab-close delivery uses `navigator.sendBeacon` on `pagehide`, with a
+`fetch(..., keepalive=True)` fallback. Browser shutdown and mobile lifecycle
+events cannot guarantee that either request reaches the API. The 10-minute
+watchdog reliably handles an open but idle Streamlit page, but it cannot run
+after the page has been destroyed. Guaranteed cleanup after a failed unload
+request would require a server-side session TTL or cleanup job.

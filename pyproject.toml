@@ -14,6 +14,7 @@ dependencies = [
     "pydantic==2.13.4",
     "PyYAML==6.0.3",
     "requests==2.34.2",
+    "streamlit==1.58.0",
     "uvicorn==0.52.1",
 ]
 
@@ -55,6 +56,18 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+client = [
+    "assets/*.css",
+    "assets/*.png",
+    "assets/*.svg",
+    "res/*.jpeg",
+    "res/*.jpg",
+    "res/*.png",
+    "res/*.svg",
+    "res/*.webp",
+]
 
 
 [tool.setuptools.packages.find]

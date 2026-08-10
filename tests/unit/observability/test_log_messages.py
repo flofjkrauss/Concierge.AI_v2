@@ -31,4 +31,8 @@ def test_log_methods_delegate_with_caller_stacklevel(
 
     getattr(LOG_MSG, method_name)("message")
 
-    getattr(logger, method_name).assert_called_once_with("message", stacklevel=2)
+    getattr(logger, method_name).assert_called_once_with(
+        "message",
+        extra=None,
+        stacklevel=2,
+    )

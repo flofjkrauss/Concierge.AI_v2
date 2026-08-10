@@ -1,0 +1,953 @@
+:root {
+  color-scheme: light;
+  --harbour-blue: #2467f0;
+  --harbour-blue-dark: #1749b5;
+  --harbour-ink: #18212b;
+  --harbour-muted: #68717e;
+  --harbour-surface: #f4f0e7;
+  --harbour-panel: #171d24;
+  --harbour-wash: #e8e0d2;
+  --harbour-gold: #f0ad32;
+  --harbour-danger: #b42318;
+  --harbour-border: #d0c09d;
+  --harbour-content-width: 880px;
+  --harbour-shell-width: 920px;
+  --harbour-header-height: 77px;
+  --harbour-footer-height: 91px;
+  --harbour-chrome: #0d1117;
+  --harbour-chrome-deep: #080b10;
+  --harbour-input: #151a21;
+  --harbour-input-deep: #0f141a;
+  --harbour-input-text: #f5f1e8;
+  --harbour-input-muted: #aaa69d;
+  --harbour-gold-soft: #d9ae5c;
+}
+
+html, body, [class*="css"] {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.stApp {
+  color: var(--harbour-ink);
+  background:
+    linear-gradient(rgba(8, 22, 42, 0.36), rgba(8, 22, 42, 0.48)),
+    url("__HARBOUR_BACKGROUND__") center center / cover fixed;
+}
+
+.stApp::before {
+  position: fixed;
+  inset: 0 auto 0 50%;
+  z-index: 0;
+  width: min(100%, 980px);
+  border-right: 1px solid rgba(197, 157, 87, 0.42);
+  border-left: 1px solid rgba(197, 157, 87, 0.42);
+  background: rgba(23, 29, 36, 0.96);
+  box-shadow: 0 0 76px rgba(2, 8, 17, 0.54);
+  transform: translateX(-50%);
+  content: "";
+}
+
+[data-testid="stAppViewContainer"] {
+  z-index: 1;
+  background: transparent !important;
+}
+
+[data-testid="stHeader"] {
+  height: 0;
+  background: transparent;
+}
+
+[data-testid="stToolbar"], footer {
+  display: none;
+}
+
+[data-testid="stAppScrollToBottomContainer"] {
+  position: fixed;
+  inset: var(--harbour-header-height) 0 var(--harbour-footer-height);
+  height: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scroll-padding-block: 1rem;
+}
+
+.block-container {
+  width: min(100%, var(--harbour-shell-width)) !important;
+  max-width: var(--harbour-shell-width) !important;
+  min-height: 100%;
+  padding: 1rem 1.25rem 2.75rem !important;
+}
+
+[data-testid="stLayoutWrapper"]:has(> .st-key-hotel_header) {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 110;
+  width: 100%;
+  height: var(--harbour-header-height);
+  border-bottom: 1px solid rgba(201, 151, 67, 0.48);
+  background-color: var(--harbour-chrome);
+  background-image:
+    radial-gradient(ellipse at center, rgba(50, 54, 60, 0.42), transparent 64%),
+    url("__HARBOUR_CHROME_PATTERN__");
+  background-position: center, center 48%;
+  background-size: auto, cover;
+  background-repeat: no-repeat;
+  backdrop-filter: blur(14px);
+}
+
+.st-key-hotel_header {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.harbour-header-content {
+  display: flex;
+  width: min(calc(100% - 2.5rem), var(--harbour-content-width));
+  height: 100%;
+  align-items: center;
+  margin-inline: auto;
+}
+
+.harbour-brand {
+  display: flex;
+  align-items: center;
+}
+
+.harbour-brand img {
+  width: min(100%, 340px);
+  height: 54px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+[data-testid="stChatMessage"] {
+  align-items: flex-start;
+  color: var(--harbour-ink);
+  margin: 0.55rem 0;
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--harbour-border);
+  border-radius: 18px;
+  background: var(--harbour-surface);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.2);
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) {
+  align-items: center;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stChatMessageContent"] {
+  display: flex;
+  min-height: 32px;
+  align-self: stretch;
+  align-items: center;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stChatMessageContent"] > [data-testid="stVerticalBlock"] {
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: center;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stMarkdownContainer"] {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  margin-bottom: 0 !important;
+}
+
+[data-testid="stChatMessage"]:not(:has(.harbour-booking-card)):not(
+    :has([class*="st-key-room_grid_"])
+  ):not(
+    :has(.harbour-information-card)
+  ) [data-testid="stMarkdownContainer"] p {
+  margin-block: 0 !important;
+}
+
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stChatMessage"] [data-testid="stMarkdownContainer"] li {
+  font-size: 1.125rem;
+  line-height: 1.62;
+}
+
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] h1,
+[data-testid="stChatMessage"] h2,
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] h4,
+[data-testid="stChatMessage"] h5,
+[data-testid="stChatMessage"] h6 {
+  color: var(--harbour-ink) !important;
+}
+
+[data-testid="stChatMessage"] [data-testid="stCaptionContainer"] p {
+  font-size: 0.98rem !important;
+  line-height: 1.48;
+  color: var(--harbour-muted) !important;
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) {
+  width: calc(100% - clamp(1rem, 7vw, 5rem));
+  margin-left: clamp(1rem, 7vw, 5rem);
+  border-color: rgba(211, 174, 104, 0.52);
+  background: #1a2a3b;
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) p,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h1,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h2,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h3,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) h4,
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) li {
+  color: #f7f3ea !important;
+}
+
+[data-testid="stChatMessage"] p:last-child {
+  margin-bottom: 0;
+}
+
+[data-testid="stAppScrollToBottomContainer"]
+  [data-testid="stVerticalBlock"]
+  > [data-testid="stLayoutWrapper"]:last-child:has(> [data-testid="stChatMessage"]) {
+  margin-bottom: 1.25rem;
+}
+
+[class*="st-key-room_card_"] {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border-color: var(--harbour-border) !important;
+  border-top: 3px solid var(--harbour-gold) !important;
+  border-radius: 16px !important;
+  background: #eee7da;
+  box-shadow: 0 8px 24px rgba(26, 31, 38, 0.13);
+}
+
+[class*="st-key-room_grid_"] [data-testid="stHorizontalBlock"] {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 1rem !important;
+  align-items: stretch;
+  overflow-x: auto;
+  padding: 0.1rem 0.1rem 0.75rem;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  scrollbar-color: rgba(217, 174, 92, 0.66) transparent;
+  scrollbar-width: thin;
+}
+
+[class*="st-key-room_grid_"] [data-testid="stColumn"] {
+  display: flex;
+  width: calc((100% - 3rem) / 4) !important;
+  min-width: calc((100% - 3rem) / 4) !important;
+  flex: 0 0 calc((100% - 3rem) / 4) !important;
+  scroll-snap-align: start;
+}
+
+[class*="st-key-room_grid_"] [data-testid="stColumn"] > [data-testid="stVerticalBlock"] {
+  width: 100%;
+}
+
+[class*="st-key-room_grid_"] [data-testid="stLayoutWrapper"]:has(> [class*="st-key-room_card_"]) {
+  height: 100%;
+}
+
+[class*="st-key-room_card_"] > [data-testid="stElementContainer"]:last-child {
+  margin-top: auto;
+}
+
+[class*="st-key-room_card_"] [data-testid="stImage"] img {
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+[class*="st-key-room_card_"] h4 {
+  font-size: 1.2rem !important;
+  line-height: 1.3;
+}
+
+.harbour-room-price {
+  margin: 0.3rem 0 0.2rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid rgba(184, 143, 65, 0.42);
+  border-radius: 11px;
+  background: rgba(217, 174, 92, 0.1);
+}
+
+.harbour-room-price__label {
+  display: block;
+  margin-bottom: 0.12rem;
+  color: #6c604c;
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.harbour-room-price__amount {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.2rem 0.38rem;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.harbour-room-price__amount strong {
+  color: #18212b;
+  font-size: 1.42rem;
+  font-weight: 780;
+  line-height: 1.15;
+}
+
+.harbour-room-price__suffix,
+.harbour-room-price__total {
+  color: #5f6670;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.harbour-room-price__suffix {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.harbour-room-price__total {
+  display: block;
+  margin-top: 0.22rem;
+}
+
+[class*="st-key-room_card_"] .stButton button {
+  height: 54px;
+  min-height: 54px;
+}
+
+.stButton button {
+  overflow: hidden;
+  min-height: 44px;
+  border-color: #a99a7c;
+  border-radius: 11px;
+  color: #f6f1e7;
+  background: #263241;
+  font-weight: 650;
+  transition:
+    border-color 140ms ease,
+    color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.stButton button::before,
+.stButton button::after {
+  border-radius: inherit !important;
+}
+
+.stButton button:hover {
+  border-color: #d5b873;
+  color: #ffffff;
+  background: #344355;
+}
+
+.stButton button p {
+  font-size: 1rem !important;
+  line-height: 1.2 !important;
+  color: inherit !important;
+  background: transparent !important;
+}
+
+.stButton button[kind="primary"] {
+  border-color: #d9ae5c;
+  color: #12171d !important;
+  background: #d9ae5c;
+}
+
+.stButton button[kind="primary"] p {
+  color: #12171d !important;
+}
+
+.stButton button[kind="primary"]:hover {
+  border-color: #efd18a;
+  background: #e7c574;
+}
+
+[class*="st-key-cancel_booking_"] button {
+  border-color: var(--harbour-danger) !important;
+  color: #ffffff !important;
+  background: var(--harbour-danger) !important;
+}
+
+[class*="st-key-cancel_booking_"] button p {
+  color: #ffffff !important;
+}
+
+.stButton button:focus-visible {
+  outline: 3px solid rgba(217, 174, 92, 0.38) !important;
+  outline-offset: 2px;
+}
+
+.harbour-information-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  overflow: hidden;
+  margin: 0.15rem 0;
+  padding: 1.15rem 1.2rem;
+  border: 1px solid rgba(217, 174, 92, 0.5);
+  border-left: 4px solid var(--harbour-gold-soft);
+  border-radius: 16px;
+  color: #f6f1e7;
+  background:
+    radial-gradient(circle at 94% 8%, rgba(217, 174, 92, 0.14), transparent 34%),
+    linear-gradient(145deg, #202a35, #121920);
+  box-shadow: 0 14px 32px rgba(10, 15, 21, 0.24);
+}
+
+.harbour-information-card__icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(217, 174, 92, 0.48);
+  border-radius: 15px;
+  color: #f4d793;
+  background: rgba(217, 174, 92, 0.11);
+  font-family: "Segoe UI Symbol", "Segoe UI Emoji", sans-serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.harbour-information-card__content {
+  min-width: 0;
+}
+
+.harbour-information-card__eyebrow {
+  display: block;
+  margin-bottom: 0.18rem;
+  color: #d9bd82;
+  font-size: 0.74rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+[data-testid="stChatMessage"] .harbour-information-card h4 {
+  margin: 0 0 0.35rem;
+  color: #fffaf0 !important;
+  font-size: 1.16rem;
+  line-height: 1.3;
+}
+
+[data-testid="stChatMessage"] .harbour-information-card p {
+  margin: 0;
+  color: #d8d8d5 !important;
+  font-size: 1.04rem !important;
+  line-height: 1.55;
+}
+
+.harbour-booking-card {
+  overflow: hidden;
+  margin: 1rem 0 1.1rem;
+  border: 1px solid rgba(217, 174, 92, 0.5);
+  border-top: 3px solid var(--harbour-gold-soft);
+  border-radius: 16px;
+  color: #f6f1e7;
+  background:
+    radial-gradient(circle at 92% 5%, rgba(217, 174, 92, 0.13), transparent 35%),
+    linear-gradient(145deg, #202a35, #121920);
+  box-shadow: 0 14px 32px rgba(10, 15, 21, 0.24);
+}
+
+.harbour-booking-card--danger {
+  border-color: rgba(180, 35, 24, 0.7);
+  border-top-color: var(--harbour-danger);
+}
+
+.harbour-booking-card--cancelled {
+  border-color: rgba(206, 84, 72, 0.72);
+  border-top-color: #e05548;
+  background:
+    linear-gradient(rgba(28, 31, 35, 0.22), rgba(28, 31, 35, 0.22)),
+    radial-gradient(circle at 92% 5%, rgba(180, 35, 24, 0.17), transparent 38%),
+    linear-gradient(145deg, #25282c, #15191d);
+  box-shadow: 0 10px 24px rgba(10, 15, 21, 0.18);
+}
+
+.harbour-booking-card__header,
+.harbour-booking-card__room {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.harbour-booking-card__header {
+  padding: 1rem 1.1rem 0.9rem;
+  border-bottom: 1px solid rgba(217, 174, 92, 0.2);
+}
+
+.harbour-booking-card__eyebrow {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: #d9bd82;
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card h4 {
+  margin: 0;
+  color: #fffaf0 !important;
+  font-size: 1.22rem;
+  line-height: 1.25;
+}
+
+.harbour-booking-card__status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 0.34rem;
+  align-items: center;
+  margin-left: 1rem;
+  padding: 0.35rem 0.62rem;
+  border: 1px solid rgba(217, 174, 92, 0.46);
+  border-radius: 999px;
+  color: #f4d793;
+  background: rgba(217, 174, 92, 0.1);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.harbour-booking-card--danger .harbour-booking-card__status {
+  border-color: rgba(255, 159, 148, 0.42);
+  color: #ffb8af;
+  background: rgba(180, 35, 24, 0.16);
+}
+
+.harbour-booking-card--confirmed .harbour-booking-card__status {
+  border-color: rgba(91, 198, 139, 0.58);
+  color: #a5e7bf;
+  background: rgba(33, 122, 74, 0.24);
+}
+
+.harbour-booking-card--cancelled .harbour-booking-card__status {
+  border-color: rgba(255, 159, 148, 0.52);
+  color: #ffe1dc;
+  background: rgba(180, 35, 24, 0.42);
+}
+
+.harbour-booking-card__room {
+  justify-content: flex-start;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem 0.6rem;
+}
+
+.harbour-booking-card__anchor {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 1px solid rgba(217, 174, 92, 0.38);
+  border-radius: 12px;
+  color: #f2ce80;
+  background: rgba(217, 174, 92, 0.09);
+  font-size: 1.25rem;
+}
+
+.harbour-booking-card__room strong {
+  color: #fffaf0;
+  font-size: 1.08rem;
+}
+
+.harbour-booking-card__room-copy {
+  min-width: 0;
+}
+
+.harbour-booking-card__room-title,
+.harbour-booking-card__amenities {
+  display: flex;
+  align-items: center;
+}
+
+.harbour-booking-card__room-title {
+  flex-wrap: wrap;
+  gap: 0.45rem 0.65rem;
+}
+
+.harbour-booking-card__amenities {
+  gap: 0.38rem;
+}
+
+.harbour-booking-card__amenity {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(217, 174, 92, 0.42);
+  border-radius: 9px;
+  color: #f4d793;
+  background: rgba(217, 174, 92, 0.1);
+  cursor: help;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.harbour-booking-card__amenity:focus-visible {
+  outline: 2px solid #f4d793;
+  outline-offset: 2px;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card p {
+  color: #d8d8d5 !important;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__reference {
+  margin: 0.14rem 0 0;
+  color: #aeb7c0 !important;
+  font-size: 0.82rem !important;
+}
+
+.harbour-booking-card__facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.55rem 1.1rem 0.9rem;
+}
+
+.harbour-booking-card__facts div {
+  min-width: 0;
+  padding: 0.68rem 0.72rem;
+  border: 1px solid rgba(217, 174, 92, 0.17);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.harbour-booking-card__facts dt {
+  margin-bottom: 0.18rem;
+  color: #aeb7c0;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.harbour-booking-card__facts dd {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #fffaf0;
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__hotel {
+  margin: 0;
+  padding: 0 1.1rem 0.75rem;
+  font-size: 0.86rem !important;
+  line-height: 1.45 !important;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__hotel {
+  padding-bottom: 1rem;
+  color: #aeb7c0 !important;
+}
+
+.harbour-booking-card__customer {
+  margin: 0 1.1rem 0.9rem;
+  padding: 0.82rem 0.9rem;
+  border: 1px solid rgba(217, 174, 92, 0.24);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.harbour-booking-card__customer-label {
+  display: block;
+  margin-bottom: 0.28rem;
+  color: #d9bd82;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__customer p {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: #fffaf0 !important;
+  font-size: 1.05rem !important;
+  font-weight: 600;
+  line-height: 1.58 !important;
+}
+
+[data-testid="stChatMessage"] .harbour-booking-card__cancelled-notice {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  margin: 0 1.1rem 0.85rem;
+  padding: 0.72rem 0.78rem;
+  border: 1px solid rgba(229, 104, 91, 0.42);
+  border-radius: 10px;
+  color: #ffe3df !important;
+  background: rgba(180, 35, 24, 0.2);
+  font-size: 0.9rem !important;
+  font-weight: 650;
+  line-height: 1.4 !important;
+}
+
+.harbour-booking-card__cancelled-notice span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border-radius: 50%;
+  color: #191a1d;
+  background: #f09a90;
+  font-weight: 900;
+}
+
+[data-testid="stChatInput"] textarea:focus-visible {
+  outline: 3px solid rgba(217, 174, 92, 0.34) !important;
+  outline-offset: 2px;
+}
+
+[data-testid="stBottomBlockContainer"] {
+  width: min(100%, var(--harbour-shell-width)) !important;
+  max-width: var(--harbour-shell-width) !important;
+  margin-inline: auto;
+  padding: 0.75rem 1.25rem 1rem !important;
+  background: transparent;
+}
+
+[data-testid="stBottom"] {
+  position: fixed !important;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  height: var(--harbour-footer-height);
+  border-top: 1px solid rgba(201, 151, 67, 0.42);
+  background-color: var(--harbour-chrome-deep) !important;
+  background-image:
+    radial-gradient(ellipse at center, rgba(45, 48, 53, 0.4), transparent 66%),
+    url("__HARBOUR_CHROME_PATTERN__") !important;
+  background-position: center, center 58% !important;
+  background-size: auto, cover !important;
+  background-repeat: no-repeat !important;
+  backdrop-filter: blur(14px);
+}
+
+[data-testid="stBottom"] > div {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  background: transparent !important;
+}
+
+[data-testid="stChatInput"] {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(217, 174, 92, 0.64);
+  border-radius: 17px;
+  background: linear-gradient(180deg, var(--harbour-input), var(--harbour-input-deep)) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    inset 0 1px rgba(255, 255, 255, 0.05);
+}
+
+[data-testid="stChatInput"] > div {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stChatInput"] > div > div {
+  position: relative !important;
+  height: 35px !important;
+  min-height: 35px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0 !important;
+  padding-right: 3.35rem !important;
+  background: transparent !important;
+}
+
+[data-testid="stChatInput"] > div > div > :first-child {
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+[data-testid="stChatInput"] > div > div > :has([data-testid="stChatInputSubmitButton"]) {
+  position: static !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  flex: 0 0 0 !important;
+}
+
+[data-testid="stChatInput"] > div > div:has([data-testid="InputInstructions"]) {
+  padding-right: 7rem !important;
+}
+
+[data-testid="stChatInput"] [data-testid="InputInstructions"] {
+  position: absolute !important;
+  top: 50% !important;
+  right: 3.35rem !important;
+  transform: translateY(-50%) !important;
+  white-space: nowrap;
+  color: var(--harbour-input-muted) !important;
+}
+
+[data-testid="stChatInput"] [data-baseweb="textarea"],
+[data-testid="stChatInput"] [data-baseweb="base-input"],
+[data-testid="stChatInput"] textarea {
+  border-color: transparent !important;
+  color: var(--harbour-input-text) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stChatInput"] textarea {
+  height: 35px !important;
+  max-height: 35px !important;
+  overflow-y: auto !important;
+  caret-color: #f3ca76 !important;
+  font-size: 1.125rem !important;
+  line-height: 1.5 !important;
+}
+
+[data-testid="stChatInput"] textarea::placeholder {
+  color: var(--harbour-input-muted) !important;
+  opacity: 1;
+}
+
+[data-testid="stChatInputSubmitButton"] {
+  position: absolute !important;
+  top: 50% !important;
+  right: 0.35rem !important;
+  z-index: 3;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid rgba(217, 174, 92, 0.34) !important;
+  border-radius: 11px !important;
+  color: #817761 !important;
+  background: rgba(217, 174, 92, 0.08) !important;
+  transform: translateY(-50%) !important;
+  box-shadow: none !important;
+}
+
+[data-testid="stChatInputSubmitButton"]:not(:disabled) {
+  border-color: #edcc83 !important;
+  color: #11151a !important;
+  background: var(--harbour-gold-soft) !important;
+  box-shadow: 0 4px 14px rgba(217, 174, 92, 0.26) !important;
+}
+
+[data-testid="stChatInputSubmitButton"]:not(:disabled):hover {
+  border-color: #fff0b7 !important;
+  background: #e7c574 !important;
+}
+
+[data-testid="stChatInputSubmitButton"] svg {
+  color: currentColor !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+[data-testid="stSpinner"] {
+  color: #dfc079;
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  [class*="st-key-room_grid_"] [data-testid="stColumn"] {
+    width: calc((100% - 2rem) / 3) !important;
+    min-width: calc((100% - 2rem) / 3) !important;
+    flex-basis: calc((100% - 2rem) / 3) !important;
+  }
+}
+
+@media (max-width: 700px) {
+  :root {
+    --harbour-header-height: 68px;
+    --harbour-footer-height: 91px;
+  }
+
+  .block-container {
+    padding: 0.8rem 0.8rem 2rem !important;
+  }
+
+  [data-testid="stLayoutWrapper"]:has(> .st-key-hotel_header) {
+    width: 100%;
+  }
+
+  .st-key-hotel_header {
+    margin: 0;
+    padding: 0;
+  }
+
+  .harbour-header-content {
+    width: calc(100% - 1.6rem);
+  }
+
+  .harbour-brand img {
+    width: min(100%, 250px);
+    height: 48px;
+  }
+
+  [class*="st-key-room_grid_"] [data-testid="stColumn"] {
+    width: min(82vw, 19rem) !important;
+    min-width: min(82vw, 19rem) !important;
+    flex-basis: min(82vw, 19rem) !important;
+  }
+
+  [data-testid="stChatMessage"] {
+    padding: 0.85rem;
+    border-radius: 15px;
+  }
+
+  [data-testid="stBottomBlockContainer"] {
+    padding-inline: 0.8rem !important;
+  }
+
+  .harbour-booking-card__facts {
+    grid-template-columns: 1fr;
+  }
+
+  .harbour-information-card {
+    gap: 0.8rem;
+    padding: 1rem;
+  }
+
+  .harbour-information-card__icon {
+    width: 46px;
+    height: 46px;
+  }
+}

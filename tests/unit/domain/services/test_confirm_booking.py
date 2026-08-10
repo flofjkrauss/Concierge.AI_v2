@@ -21,7 +21,7 @@ def test_confirm_booking_creates_and_persists_confirmed_booking(
     database.rooms.append(room)
     database.customers.append(customer)
 
-    result = confirm_booking(booking_request, room, customer, database)
+    result = confirm_booking(booking_request, room.category, customer, database)
 
     assert result.status is BookingStatus.CONFIRMED
     assert result.customer_id == customer.customer_id
@@ -37,10 +37,11 @@ def test_confirm_booking_rechecks_room_availability(
     booking: Booking,
     database: InMemoryDatabase,
 ) -> None:
+    database.rooms.append(room)
     database.bookings.append(booking)
 
     with pytest.raises(ValueError, match="no longer available"):
-        confirm_booking(booking_request, room, customer, database)
+        confirm_booking(booking_request, room.category, customer, database)
 
     assert database.saved_bookings == []
 
@@ -50,8 +51,15 @@ def test_confirm_booking_requires_customer_after_availability_check(
     room: Room,
     database: InMemoryDatabase,
 ) -> None:
+    database.rooms.append(room)
+
     with pytest.raises(ValueError, match="No customer data available"):
-        confirm_booking(booking_request, room, None, database)  # type: ignore[arg-type]
+        confirm_booking(
+            booking_request,
+            room.category,
+            None,  # type: ignore[arg-type]
+            database,
+        )
 
 
 def test_get_room_delegates_to_database(

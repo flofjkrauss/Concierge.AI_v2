@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title">
+  <title id="title">Family room preview illustration</title>
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F0F6FF"/><stop offset="1" stop-color="#E5F2EE"/></linearGradient>
+    <linearGradient id="cover" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3175EF"/><stop offset="1" stop-color="#1749B5"/></linearGradient>
+  </defs>
+  <path fill="url(#wall)" d="M0 0h1200v675H0z"/>
+  <path fill="#D4DBE4" d="M0 535h1200v140H0z"/>
+  <rect x="775" y="73" width="303" height="246" rx="12" fill="#FFFFFF" stroke="#B8CCE3" stroke-width="12"/>
+  <path fill="#BDE4F3" d="M800 98h253v196H800z"/>
+  <path d="M800 244c55-29 107 19 159-5 37-17 67-15 94-3v58H800z" fill="#55A9CF"/>
+  <path d="M927 98v196" stroke="#FFFFFF" stroke-width="9"/>
+  <rect x="87" y="334" width="653" height="229" rx="28" fill="#173B70"/>
+  <rect x="124" y="297" width="579" height="196" rx="27" fill="#FFFFFF"/>
+  <rect x="161" y="320" width="219" height="72" rx="22" fill="#E0EAF6"/>
+  <rect x="447" y="320" width="219" height="72" rx="22" fill="#E0EAF6"/>
+  <path fill="url(#cover)" d="M124 415h579v78H124z"/>
+  <rect x="54" y="548" width="724" height="27" rx="13" fill="#102E5F"/>
+  <path d="M825 352h272v205H825z" fill="#F9FBFE" stroke="#5D7395" stroke-width="11"/>
+  <path d="M825 452h272M866 352v205M1056 352v205" stroke="#5D7395" stroke-width="10"/>
+  <rect x="855" y="377" width="171" height="53" rx="17" fill="#D8E8F7"/>
+  <rect x="855" y="477" width="171" height="53" rx="17" fill="#F6D68F"/>
+  <path fill="#F0AD32" d="M742 304h92l-16-59h-60z"/>
+  <path d="M788 304v175" stroke="#9A6A20" stroke-width="10"/>
+  <ellipse cx="788" cy="486" rx="49" ry="10" fill="#9A6A20" opacity=".5"/>
+</svg>

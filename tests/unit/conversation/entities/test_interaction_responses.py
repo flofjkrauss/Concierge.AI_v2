@@ -24,13 +24,18 @@ def test_error_response_keeps_reason() -> None:
 
 
 def test_greeting_response_uses_default_phrase() -> None:
-    response = GreetingResponse(session_active=True)
+    response = GreetingResponse(
+        session_active=True,
+        text=DefaultPhrases.GREETING,
+        session_id="session-1",
+    )
 
     assert response.text == DefaultPhrases.GREETING
+    assert response.session_id == "session-1"
 
 
 def test_availability_response_keeps_structured_content() -> None:
-    content = ApiAvailabilityResponse(request_id="request-1", rooms=[])
+    content = ApiAvailabilityResponse(rooms=[])
 
     response = AvailabilityResponse(True, "Available", content)
 

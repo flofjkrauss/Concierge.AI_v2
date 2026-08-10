@@ -1,3 +1,7 @@
+api:
+  enabled: true
+
+
 data_dir: /var/lib/vector
 
 sources:

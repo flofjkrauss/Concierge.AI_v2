@@ -31,6 +31,7 @@ from conversation.user_interaction import UserInteraction
 from conversation.value_object.action import Action
 from conversation.value_object.information_fields import InformationField
 from conversation.value_object.intent import Intent
+from domain.entities.booking import Booking
 
 
 def graph_state(**values: object) -> ConversationState:
@@ -70,7 +71,7 @@ def expected_confirmation(
 def test_begin_turn_initializes_new_thread() -> None:
     nodes, _, _, _, interaction, _ = make_nodes()
     response = InteractionResponse(True, "session-1")
-    interaction.send_session_id.return_value = response
+    interaction.display_greeting.return_value = response
 
     result = nodes.begin_turn(graph_state(session_id="session-1", language=None))
 
@@ -80,6 +81,10 @@ def test_begin_turn_initializes_new_thread() -> None:
     assert result["response"] is response
     assert result["message_history"] == []
     assert result["collected_information"] == {}
+    interaction.display_greeting.assert_called_once_with(
+        intent=Intent.CONVERSATION_INITIATION,
+        data="session-1",
+    )
 
 
 def test_begin_turn_requires_session_id_for_new_thread() -> None:
@@ -94,9 +99,7 @@ def test_begin_turn_returns_empty_response_for_blank_message() -> None:
     empty = EmptyInteractionResponse()
     interaction.send_empty_response.return_value = empty
 
-    result = nodes.begin_turn(
-        graph_state(initialized=True, incoming_message="   ")
-    )
+    result = nodes.begin_turn(graph_state(initialized=True, incoming_message="   "))
 
     assert result["response"] is empty
     assert result["parsed_message"] is None
@@ -121,9 +124,7 @@ def test_begin_turn_keeps_valid_parsed_message() -> None:
     message = Message("Hello")
     interaction.parse_message.return_value = message
 
-    result = nodes.begin_turn(
-        graph_state(initialized=True, incoming_message="Hello")
-    )
+    result = nodes.begin_turn(graph_state(initialized=True, incoming_message="Hello"))
 
     assert result["parsed_message"] is message
 
@@ -204,7 +205,7 @@ def test_classifier_receives_history_and_current_message() -> None:
     assert result["detected_intent"] is Intent.BOOKING_REQUEST
 
 
-def test_extractor_receives_contextual_message() -> None:
+def test_extractor_receives_current_translated_message() -> None:
     nodes, _, _, extractor, *_ = make_nodes()
     current = Message("Tomorrow")
     information = Information(InformationField.FIRST_NAME, "Alex")
@@ -215,9 +216,7 @@ def test_extractor_receives_contextual_message() -> None:
     )
 
     assert result["extracted_information"] == [information]
-    assert "(no previous messages)" in extractor.extract.call_args.kwargs[
-        "message"
-    ].content
+    extractor.extract.assert_called_once_with(message=current)
 
 
 def test_update_progress_increments_consecutive_unknown_counter() -> None:
@@ -248,9 +247,7 @@ def test_update_progress_resets_counter_and_indexes_information() -> None:
     )
 
     assert result["unknown_counter"] == 0
-    assert result["collected_information"] == {
-        InformationField.FIRST_NAME: information
-    }
+    assert result["collected_information"] == {InformationField.FIRST_NAME: information}
 
 
 def test_update_progress_does_not_count_recognized_confirmation() -> None:
@@ -479,6 +476,7 @@ def test_determine_action_requests_missing_fields() -> None:
         (Intent.AVAILABILITY_CHECK, DomainOperation.FIND_AVAILABILITY),
         (Intent.BOOKING_CHECK, DomainOperation.GET_BOOKING),
         (Intent.INFORMATION_REQUEST, DomainOperation.GET_INFORMATION),
+        (Intent.BOOKING_CANCELLATION, DomainOperation.GET_BOOKING),
     ],
 )
 def test_determine_action_selects_immediate_domain_operation(
@@ -499,11 +497,6 @@ def test_determine_action_selects_immediate_domain_operation(
             Intent.BOOKING_REQUEST,
             ExpectedInteractionKind.BOOKING_CONFIRMATION,
             DomainOperation.CREATE_BOOKING,
-        ),
-        (
-            Intent.BOOKING_CANCELLATION,
-            ExpectedInteractionKind.CANCELLATION_CONFIRMATION,
-            DomainOperation.CANCEL_BOOKING,
         ),
     ],
 )
@@ -560,6 +553,48 @@ def test_execute_domain_action_delegates_and_selects_response_action() -> None:
     assert result["last_intent_fulfilled"] is True
 
 
+def test_execute_domain_action_requires_confirmation_after_booking_lookup(
+    booking: Booking,
+) -> None:
+    nodes, _, _, _, _, adapter = make_nodes()
+    adapter.execute.return_value = booking
+
+    result = nodes.execute_domain_action(
+        graph_state(
+            domain_operation=DomainOperation.GET_BOOKING,
+            current_intent=Intent.BOOKING_CANCELLATION,
+            collected_information={},
+        )
+    )
+
+    assert result["action"] is Action.ASK_FOR_CONFIRMATION
+    assert result["domain_data"] is booking
+    expected = result["expected_interaction"]
+    assert expected.kind is ExpectedInteractionKind.CANCELLATION_CONFIRMATION  # type: ignore[union-attr]
+    assert expected.operation is DomainOperation.CANCEL_BOOKING  # type: ignore[union-attr]
+    assert result["last_intent_fulfilled"] is False
+
+
+def test_execute_domain_action_handles_missing_booking_for_cancellation() -> None:
+    nodes, _, _, _, _, adapter = make_nodes()
+    adapter.execute.return_value = None
+
+    result = nodes.execute_domain_action(
+        graph_state(
+            domain_operation=DomainOperation.GET_BOOKING,
+            current_intent=Intent.BOOKING_CANCELLATION,
+            collected_information={},
+        )
+    )
+
+    assert result == {
+        "domain_operation": None,
+        "domain_data": None,
+        "action": Action.DISPLAY_BOOKING,
+        "last_intent_fulfilled": False,
+    }
+
+
 def test_execute_domain_action_converts_expected_error_to_response() -> None:
     nodes, _, _, _, interaction, adapter = make_nodes()
     adapter.execute.side_effect = ValueError("invalid data")
@@ -588,9 +623,12 @@ def test_execute_domain_action_requires_operation() -> None:
 def test_build_response_preserves_existing_response() -> None:
     nodes, *_ = make_nodes()
 
-    assert nodes.build_response(
-        graph_state(response=InteractionResponse(True, "Existing"))
-    ) == {}
+    assert (
+        nodes.build_response(
+            graph_state(response=InteractionResponse(True, "Existing"))
+        )
+        == {}
+    )
 
 
 def test_build_response_delegates_to_user_interaction() -> None:
@@ -639,9 +677,12 @@ def test_translate_response_skips_empty_or_domain_language_response() -> None:
     nodes, translator, *_ = make_nodes()
 
     assert nodes.translate_response(graph_state(response=None)) == {}
-    assert nodes.translate_response(
-        graph_state(response=InteractionResponse(True, "Hello"), language="en")
-    ) == {}
+    assert (
+        nodes.translate_response(
+            graph_state(response=InteractionResponse(True, "Hello"), language="en")
+        )
+        == {}
+    )
     translator.translate.assert_not_called()
 
 
@@ -650,9 +691,7 @@ def test_translate_response_returns_translated_copy() -> None:
     response = InteractionResponse(True, "Hello")
     translator.translate.return_value = Message("Hallo")
 
-    result = nodes.translate_response(
-        graph_state(response=response, language="de")
-    )
+    result = nodes.translate_response(graph_state(response=response, language="de"))
 
     translated = result["response"]
     assert translated.text == "Hallo"  # type: ignore[union-attr]
@@ -682,9 +721,12 @@ def test_store_assistant_message_skips_missing_or_empty_response() -> None:
     nodes, *_ = make_nodes()
 
     assert nodes.store_assistant_message(graph_state(response=None)) == {}
-    assert nodes.store_assistant_message(
-        graph_state(response=InteractionResponse(True, ""))
-    ) == {}
+    assert (
+        nodes.store_assistant_message(
+            graph_state(response=InteractionResponse(True, ""))
+        )
+        == {}
+    )
 
 
 def test_write_state_to_logs_serializes_state(monkeypatch) -> None:

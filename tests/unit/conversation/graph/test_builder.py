@@ -29,7 +29,11 @@ class EmptyExtractor(InformationExtractor):
 
 class GreetingInteraction(UserInteraction):
     def display_greeting(self, intent: Intent, data: object) -> GreetingResponse:
-        return GreetingResponse(session_active=True)
+        return GreetingResponse(
+            session_active=True,
+            text="Welcome! How can I help you?",
+            session_id=str(data),
+        )
 
 
 def build_graph(database: InMemoryDatabase):
@@ -71,7 +75,7 @@ def test_compiled_graph_initializes_thread_and_persists_state(
 
     assert result["session_active"] is True
     assert result["response"] is not None
-    assert result["response"].text == "session-1"
+    assert result["response"].session_id == "session-1"
     state = graph.get_state(config).values
     assert state["initialized"] is True
     assert state["session_id"] == "session-1"

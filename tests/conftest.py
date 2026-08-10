@@ -60,7 +60,11 @@ class InMemoryDatabase(DatabaseInterface):
 
     def get_customer(self, customer_id: str) -> Customer | None:
         return next(
-            (customer for customer in self.customers if customer.customer_id == customer_id),
+            (
+                customer
+                for customer in self.customers
+                if customer.customer_id == customer_id
+            ),
             None,
         )
 
@@ -104,6 +108,31 @@ class InMemoryDatabase(DatabaseInterface):
 
     def get_hotel_address(self) -> str:
         return self.hotel_address
+
+    def get_booking_by_name(
+        self,
+        last_name: str,
+        email: str,
+        check_in: date,
+    ) -> Booking | None:
+        customer_ids = {
+            customer.customer_id
+            for customer in self.customers
+            if customer.last_name == last_name and customer.email == email
+        }
+        return next(
+            (
+                booking
+                for booking in self.bookings
+                if booking.customer_id in customer_ids
+                and booking.stay_period.check_in == check_in
+                and booking.status is not BookingStatus.CANCELLED
+            ),
+            None,
+        )
+
+    def mail_is_in_use(self, email: str) -> bool:
+        return any(customer.email == email for customer in self.customers)
 
 
 @pytest.fixture

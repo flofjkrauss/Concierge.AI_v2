@@ -42,6 +42,7 @@ class DomainOperation(StrEnum):
     CREATE_BOOKING = "create_booking"
     CANCEL_BOOKING = "cancel_booking"
     GET_INFORMATION = "get_information"
+    PREVIEW_BOOKING = "preview_booking"
 
 
 class ExpectedInteractionKind(StrEnum):

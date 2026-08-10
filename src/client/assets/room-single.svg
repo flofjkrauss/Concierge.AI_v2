@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title">
+  <title id="title">Single room preview illustration</title>
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#EAF3FF"/><stop offset="1" stop-color="#D7E6FA"/></linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#7EC8E8"/><stop offset="1" stop-color="#2467F0"/></linearGradient>
+  </defs>
+  <path fill="url(#wall)" d="M0 0h1200v675H0z"/>
+  <path fill="#C7D5E8" d="M0 530h1200v145H0z"/>
+  <rect x="720" y="84" width="342" height="286" rx="12" fill="#FFFFFF" stroke="#B6CAE3" stroke-width="12"/>
+  <path fill="#BDE6F6" d="M744 108h294v118H744z"/>
+  <path fill="url(#sea)" d="M744 226h294v120H744z"/>
+  <path d="M744 264c70-28 130 28 196 0 38-16 70-15 98-4v86H744z" fill="#5CAED9" opacity=".6"/>
+  <path d="M891 108v238" stroke="#FFFFFF" stroke-width="10"/>
+  <rect x="136" y="340" width="570" height="214" rx="22" fill="#163D7A"/>
+  <rect x="163" y="286" width="510" height="214" rx="25" fill="#FFFFFF"/>
+  <rect x="196" y="307" width="190" height="72" rx="22" fill="#DCE9F8"/>
+  <path fill="#2467F0" d="M163 403h510v97H163z" opacity=".82"/>
+  <rect x="105" y="535" width="642" height="25" rx="12" fill="#102E5F"/>
+  <rect x="819" y="394" width="158" height="151" rx="16" fill="#F7FBFF"/>
+  <path d="M862 394v-78h72v78" fill="none" stroke="#F0AD32" stroke-width="14"/>
+  <path fill="#F0AD32" d="M836 315h126l-20-68h-86z"/>
+  <circle cx="1057" cy="80" r="16" fill="#F0AD32"/>
+</svg>

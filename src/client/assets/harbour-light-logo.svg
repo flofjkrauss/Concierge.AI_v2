@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 92" role="img" aria-labelledby="title desc">
+  <title id="title">Harbour Light Hotel</title>
+  <desc id="desc">A concierge bell and guiding light beside the Harbour Light Hotel wordmark.</desc>
+  <defs>
+    <linearGradient id="bell" x1="12" y1="28" x2="69" y2="76" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3C7BFA"/>
+      <stop offset="1" stop-color="#1749B5"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="58" y1="5" x2="73" y2="25" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD36B"/>
+      <stop offset="1" stop-color="#E89A16"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4 2)">
+    <path fill="url(#gold)" d="M66 4c1.6 8 4.3 10.8 12.5 12.5C70.3 18.2 67.6 21 66 29c-1.6-8-4.4-10.8-12.5-12.5C61.6 14.8 64.4 12 66 4Z"/>
+    <rect x="31" y="24" width="17" height="9" rx="4.5" fill="#2467F0"/>
+    <path fill="url(#bell)" d="M39.5 29C22.1 29 8 43.1 8 60.5h63C71 43.1 56.9 29 39.5 29Z"/>
+    <path d="M20 51c3.7-6.3 9.1-10 16.2-11.2" fill="none" stroke="#8DB3FF" stroke-width="4.5" stroke-linecap="round"/>
+    <path fill="#123D9E" d="M5 62h69v5a6 6 0 0 0 6 6v7H0v-7a6 6 0 0 0 5-6v-5Z"/>
+    <path d="M12 74c8-3.5 16-3.5 24 0s16 3.5 24 0 13-3.5 18-1" fill="none" stroke="#77C8E9" stroke-width="2.6" stroke-linecap="round"/>
+  </g>
+  <text x="101" y="46" fill="#13233F" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="700" letter-spacing=".4">Harbour Light</text>
+  <text x="103" y="69" fill="#64748B" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" font-weight="650" letter-spacing="4.6">HOTEL</text>
+  <path d="M101 78h234" stroke="#F0AD32" stroke-width="2" stroke-linecap="round" opacity=".9"/>
+</svg>
