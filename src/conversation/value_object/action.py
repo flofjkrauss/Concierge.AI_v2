@@ -9,4 +9,5 @@ class Action(StrEnum):
     DISPLAY_BOOKING="display_booking"
     DISPLAY_GREETING="display_greeting"
     ASK_INTENT="ask_intent"
+    CONFIRMATION_DECLINED="confirmation_declined"
 

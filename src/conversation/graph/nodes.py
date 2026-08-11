@@ -21,7 +21,7 @@ from conversation.graph.state import (
     MessageRole,
 )
 from conversation.information_extrator import InformationExtractor
-from conversation.intent_classifier import IntentClassifier
+from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 from conversation.value_object.action import Action
@@ -223,7 +223,7 @@ class ConversationNodes:
     """LangGraph node callables sharing application-scoped dependencies."""
 
     translator: TranslatorInterface
-    intent_classifier: IntentClassifier
+    intent_classifier: IntentionDetectorInterface
     information_extractor: InformationExtractor
     user_interaction: UserInteraction
     domain_adapter: ConversationDomainAdapter
@@ -238,6 +238,7 @@ class ConversationNodes:
             "translated_message": None,
             "detected_intent": None,
             "extracted_information": [],
+            "changed_information": [],
             "action": None,
             "domain_operation": None,
             "domain_data": None,
@@ -317,6 +318,7 @@ class ConversationNodes:
             translated = self.translator.translate(
                 parsed_message,
                 target_lang=self.domain_language,
+                source_lang=session_language
             )
 
         normalized = replace(
@@ -341,10 +343,11 @@ class ConversationNodes:
     def classify_intent(self, state: ConversationState) -> StateUpdate:
         """Classify intent using the current message plus both-sided history."""
 
-        model_message = _contextual_model_message(state, self.domain_language)
+        message = _required_message(state, "translated_message")
+
         return {
             "detected_intent": self.intent_classifier.determine(
-                message=model_message,
+                message=message,
             )
         }
 
@@ -361,7 +364,16 @@ class ConversationNodes:
     def update_progress(self, state: ConversationState) -> StateUpdate:
         """Merge extracted values and apply the consecutive-unknown rule."""
 
+        existing_information = state.get("collected_information", {})
         extracted = state.get("extracted_information", [])
+        changed_fields = {
+        information.information_field
+        for information in extracted
+        if (
+            information.information_field in existing_information
+            and existing_information[information.information_field].content != information.content
+        )
+}
         intent = state.get("detected_intent") or Intent.UNKNOWN
         unknown_counter = state.get("unknown_counter", 0)
         current_message = state.get("translated_message")
@@ -382,6 +394,7 @@ class ConversationNodes:
 
         return {
             "collected_information": information_updates,
+            "changed_fields": list(changed_fields),
             "unknown_counter": unknown_counter,
             "termination_requested": (unknown_counter > self.max_unknown_messages),
         }
@@ -420,8 +433,10 @@ class ConversationNodes:
         if decision is False:
             return {
                 "expected_interaction": None,
+                "current_intent": expected.intent,
                 "last_intent_fulfilled": True,
-                "action": Action.ASK_INTENT,
+                "action": Action.CONFIRMATION_DECLINED,
+                "domain_operation": None,
                 "domain_data": None,
                 "confirmation_outcome": ConfirmationOutcome.DECLINED,
             }
@@ -444,15 +459,13 @@ class ConversationNodes:
 
         detected = state.get("detected_intent") or Intent.UNKNOWN
         current = state.get("current_intent", Intent.CONVERSATION_INITIATION)
-        extracted_fields = {
-            information.information_field
-            for information in state.get("extracted_information", [])
-        }
+        changed_fields = set(state.get("changed_fields", []))
+        
 
         if detected == Intent.CONVERSATION_INITIATION:
             return {
                 "action": Action.DISPLAY_GREETING,
-                "domain_data": None,
+                "domain_data": state.get("session_id"),
             }
 
         if detected != Intent.UNKNOWN:
@@ -463,7 +476,7 @@ class ConversationNodes:
 
         required_fields = set(IntentInformationMapper.determine_fields(intent=current))
         current_is_open = not state.get("last_intent_fulfilled", False)
-        if current_is_open or bool(extracted_fields & required_fields):
+        if current_is_open or bool(changed_fields & required_fields):
             return {
                 "current_intent": current,
                 "last_intent_fulfilled": False,
@@ -651,6 +664,7 @@ class ConversationNodes:
 
         response = self.user_interaction.send_error_msg(
             reason="Unknown intent threshold exceeded",
+            session_active=False,
         )
         return {
             "response": response,
@@ -673,6 +687,7 @@ class ConversationNodes:
         translated = self.translator.translate(
             Message(content=response.text),
             target_lang=session_language,
+            source_lang=self.domain_language
         )
         return {"response": replace(response, text=translated.content)}
 
@@ -704,13 +719,10 @@ class ConversationNodes:
             state: ConversationState,
         ) -> StateUpdate:
             """Write conversation state to logs after processing a message."""
-            serialized_state = to_jsonable(state)
 
             LOG_MSG.debug(
                 "Conversation message processed",
-                extra={
-                    "conversation_state": serialized_state,
-                },
+                extra=to_jsonable(state)
             )
 
             return {
@@ -747,7 +759,7 @@ def _contextual_model_message(
 def _confirmation_decision(content: str) -> bool | None:
     normalized = " ".join(content.casefold().strip().split()).strip(".,!?")
     affirmative = {"yes", "yes please", "confirm", "confirmed", "proceed"}
-    negative = {"no", "no thanks", "cancel", "decline", "stop"}
+    negative = {"no", "no thanks", "decline", "stop"}
     if normalized in affirmative:
         return True
     if normalized in negative:
@@ -896,7 +908,7 @@ def _required_date(
 def nodes_from_settings(
     *,
     translator: TranslatorInterface,
-    intent_classifier: IntentClassifier,
+    intent_classifier: IntentionDetectorInterface,
     information_extractor: InformationExtractor,
     user_interaction: UserInteraction,
     domain_adapter: ConversationDomainAdapter,

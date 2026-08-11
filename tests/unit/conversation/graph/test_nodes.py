@@ -25,7 +25,7 @@ from conversation.graph.state import (
     MessageRole,
 )
 from conversation.information_extrator import InformationExtractor
-from conversation.intent_classifier import IntentClassifier
+from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 from conversation.value_object.action import Action
@@ -40,7 +40,7 @@ def graph_state(**values: object) -> ConversationState:
 
 def make_nodes() -> tuple[ConversationNodes, Mock, Mock, Mock, Mock, Mock]:
     translator = Mock(spec=TranslatorInterface)
-    classifier = Mock(spec=IntentClassifier)
+    classifier = Mock(spec=IntentionDetectorInterface)
     extractor = Mock(spec=InformationExtractor)
     interaction = Mock(spec=UserInteraction)
     adapter = Mock()

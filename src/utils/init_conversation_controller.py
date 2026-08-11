@@ -6,7 +6,7 @@ from conversation.graph.builder import (
     create_in_memory_checkpointer,
 )
 from conversation.information_extrator import InformationExtractor
-from conversation.intent_classifier import IntentClassifier
+from conversation.models.intent.intent_classifier import IntentClassifier
 from conversation.models.translation.m2m100_translator import M2M100Translator
 from conversation.user_interaction import UserInteraction
 from database.interface import DatabaseInterface

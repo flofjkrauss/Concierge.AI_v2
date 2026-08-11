@@ -12,14 +12,16 @@ from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 from conversation.entities.message import Message
 from conversation.models.translation.interface import TranslatorInterface
 
-_MODEL_DATA_DIR = Path(__file__).resolve().parent / "model_data"
-_TRANSLATION_MODEL_DIR = _MODEL_DATA_DIR / "m2m100_418M"
-_LANGUAGE_MODEL_PATH = _MODEL_DATA_DIR / "lid.176.bin"
+from configuration.application import ApplicationSettings
+from observability.log_messages import LOG_MSG
+
+_TRANSLATION_MODEL_DIR = ApplicationSettings.get_settings().translation_model
+_LANGUAGE_MODEL_PATH = ApplicationSettings.get_settings().language_detector
+_PROCESSING_UNIT  = ApplicationSettings.get_settings().translation_processing_unit
 
 
 class UnsupportedLanguageError(ValueError):
     """Raised when M2M100 cannot translate a requested language."""
-
 
 class M2M100Translator(TranslatorInterface):
     """Translate locally with M2M100 and detect languages with fastText."""
@@ -42,20 +44,29 @@ class M2M100Translator(TranslatorInterface):
             _TRANSLATION_MODEL_DIR,
             local_files_only=True,
         )
-        self._model.to("cpu")
+        LOG_MSG.debug(f"Translator - CUDA available: {torch.cuda.is_available()}")
+        LOG_MSG.debug(f"Translator - XPU available: {torch.xpu.is_available()}")
+        self._model.to(_PROCESSING_UNIT)
         self._model.eval()
         self._language_detector = fasttext.load_model(str(_LANGUAGE_MODEL_PATH))
         self._inference_lock = Lock()
 
-    def translate(self, text: Message, target_lang: str) -> Message:
+    def translate(self, text: Message, target_lang: str, source_lang: str) -> Message:
         """Return a translated copy of ``text`` without mutating it."""
 
         normalized_target = self._require_supported_language(target_lang)
-        source_lang = self._require_supported_language(self.determine(text))
+        normalized_source_lang = self._require_supported_language(source_lang)
 
         with self._inference_lock, torch.inference_mode():
-            self._tokenizer.src_lang = source_lang
-            model_inputs = self._tokenizer(text.content, return_tensors="pt")
+            self._tokenizer.src_lang = normalized_source_lang
+            #model_inputs = self._tokenizer(text.content, return_tensors="pt")
+            model_inputs = {
+                key: value.to(_PROCESSING_UNIT)
+                for key, value in self._tokenizer(
+                    text.content,
+                    return_tensors="pt",
+                ).items()
+            }
             generated_tokens = self._model.generate(
                 **model_inputs,
                 forced_bos_token_id=self._tokenizer.get_lang_id(normalized_target),
@@ -87,7 +98,7 @@ class M2M100Translator(TranslatorInterface):
         normalized = language.strip().lower()
         if normalized not in self._tokenizer.lang_code_to_id:
             raise UnsupportedLanguageError(
-                f"Language code {language!r} is not supported by M2M100"
+                f"Language code {language!r} is not supported by {_TRANSLATION_MODEL_DIR}"
             )
         return normalized
 

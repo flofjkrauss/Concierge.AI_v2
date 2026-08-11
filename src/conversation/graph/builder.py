@@ -25,7 +25,7 @@ from conversation.graph.state import (
     ConversationState,
 )
 from conversation.information_extrator import InformationExtractor
-from conversation.intent_classifier import IntentClassifier
+from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 from database.interface import DatabaseInterface
@@ -89,6 +89,8 @@ CHECKPOINT_TYPE_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("domain.value_objects.money", "Money"),
     ("domain.value_objects.room_category", "RoomCategory"),
     ("domain.value_objects.stay_period", "StayPeriod"),
+    ("domain.services.find_matching_rooms", "MatchResponse"),
+    ('conversation.value_object.default_phrases', 'DefaultPhrases'),
 )
 
 
@@ -105,7 +107,7 @@ def build_conversation_graph(
     *,
     database: DatabaseInterface,
     translator: TranslatorInterface,
-    intent_classifier: IntentClassifier,
+    intent_classifier: IntentionDetectorInterface,
     information_extractor: InformationExtractor,
     user_interaction: UserInteraction,
     checkpointer: BaseCheckpointSaver[str],

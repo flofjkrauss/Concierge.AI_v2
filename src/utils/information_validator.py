@@ -1,9 +1,15 @@
 from collections.abc import Callable
 from datetime import date
+import re
 
 from conversation.value_object.information_fields import InformationField
 
 InformationValidator = Callable[[object], bool]
+
+
+_EMAIL_PATTERN = re.compile(
+    r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+)
 
 def is_date(value: object) -> bool:
     return isinstance(value, date)
@@ -28,10 +34,10 @@ def is_non_empty_string(value: object) -> bool:
     )
 
 def has_mail_format(value: object) -> bool:
-    if isinstance(value, str):
-        # TODO: replace this with a proper regex
-        return value.find("@") != -1
-    return False
+    if not isinstance(value, str):
+        return False
+    
+    return _EMAIL_PATTERN.fullmatch(value.strip()) is not None
 
 INFORMATION_VALIDATORS: dict[
     InformationField,

@@ -82,8 +82,9 @@ class InformationExtractor:
             information_field=InformationField.ROOM_CATEGORY,
             content=RoomCategory.FAMILY
         )
+        return [first_name, last_name, guest_count, check_out, accessible, check_in, breakfast, email, preferred_language, room_category, phone, information_topic]
        #print("extractor: ", message.content)
-        match message.original_content:
+        match message.content:
             case DebugTestInput.AVAILABILIY_CHECK:
                 return [guest_count, check_out, accessible, check_in]
             case DebugTestInput.BOOKING_CANCELLATION:

@@ -10,7 +10,9 @@ from urllib.parse import quote, urlsplit
 
 import httpx
 
-DEFAULT_API_URL = "http://127.0.0.1:8000/api/conversation"
+from configuration.application import ApplicationSettings
+
+DEFAULT_API_URL = ApplicationSettings.get_settings().conversation_endpoint
 API_URL_ENV = "CONCIERGE_API_URL"
 
 
@@ -123,7 +125,9 @@ class ConversationApi:
     def from_environment(cls) -> ConversationApi:
         """Build the client from one optional deployment-specific URL."""
 
-        return cls(os.getenv(API_URL_ENV, DEFAULT_API_URL))
+        # uncomment so enable base URL settings from environment
+        #return cls(os.getenv(API_URL_ENV, DEFAULT_API_URL))
+        return cls(DEFAULT_API_URL)
 
     def initialize(self) -> ConversationResponse:
         """Start a new conversation session."""
