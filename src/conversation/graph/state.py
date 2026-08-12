@@ -103,6 +103,7 @@ class ConversationState(TypedDict):
     response_in_domain_language: str | None
     confirmation_outcome: ConfirmationOutcome | None
     termination_requested: bool
+    next_missing_field: InformationField | None
 
 
 class ConversationInput(TypedDict):

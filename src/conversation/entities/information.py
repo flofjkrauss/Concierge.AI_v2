@@ -27,7 +27,7 @@ class Information:
             raise TypeError(f"unregistered information field: {self.information_field}")
 
         if not self.is_valid():
-            raise ValueError(f"the given value {self.content} if invalid for information field {self.information_field}")
+            raise ValueError(f"the given value {self.content} is invalid for information field {self.information_field}")
 
         if self.created_at.tzinfo is None:
             raise ValueError("created_at must be timezone-aware")

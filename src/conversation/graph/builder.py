@@ -24,7 +24,7 @@ from conversation.graph.state import (
     ConversationOutput,
     ConversationState,
 )
-from conversation.information_extrator import InformationExtractor
+from conversation.models.information.interface import InformationExtractorInterface
 from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
@@ -70,6 +70,7 @@ CHECKPOINT_TYPE_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("conversation.entities.interaction_response", "GreetingResponse"),
     ("conversation.entities.interaction_response", "InformationResponse"),
     ("conversation.entities.interaction_response", "InteractionResponse"),
+    ('conversation.entities.interaction_response', 'AskConfirmationResponse'),
     ("conversation.entities.message", "Message"),
     ("conversation.graph.state", "ConfirmationOutcome"),
     ("conversation.graph.state", "ConversationMessage"),
@@ -108,7 +109,7 @@ def build_conversation_graph(
     database: DatabaseInterface,
     translator: TranslatorInterface,
     intent_classifier: IntentionDetectorInterface,
-    information_extractor: InformationExtractor,
+    information_extractor: InformationExtractorInterface,
     user_interaction: UserInteraction,
     checkpointer: BaseCheckpointSaver[str],
     domain_adapter: ConversationDomainAdapter | None = None,

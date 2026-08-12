@@ -33,6 +33,7 @@ class IntentClassifier(IntentionDetectorInterface):
 
         self._model.to(self._device)
         self._model.eval()
+        print(f"{type(self).__name__} loaded")
 
     def determine(self, message: Message) -> Intent:
 
@@ -56,9 +57,9 @@ class IntentClassifier(IntentionDetectorInterface):
 
         category = self._model.config.id2label[class_id]
         probability = float(probabilities[0, class_id].item())
-        print(f"Intent from '{message.content}': {category} with {probability:.4f}")
+        #print(f"Intent from '{message.content}': {category} with {probability:.4f}")
         LOG_MSG.debug(
-        f"Intent parsed from message: {message.content}",
+        f"Intent parsed from message: {message.content} with {probability} probability.",
             extra=to_jsonable(
                 {
                     "intent": category,

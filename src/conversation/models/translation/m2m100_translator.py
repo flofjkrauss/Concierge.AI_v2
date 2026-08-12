@@ -50,6 +50,7 @@ class M2M100Translator(TranslatorInterface):
         self._model.eval()
         self._language_detector = fasttext.load_model(str(_LANGUAGE_MODEL_PATH))
         self._inference_lock = Lock()
+        print(f"{type(self).__name__} loaded")
 
     def translate(self, text: Message, target_lang: str, source_lang: str) -> Message:
         """Return a translated copy of ``text`` without mutating it."""

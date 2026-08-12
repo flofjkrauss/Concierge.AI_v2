@@ -10,6 +10,7 @@ from configuration.application import ApplicationSettings
 from configuration.fastapi import FastapiSettings
 from utils.fastapi_lifespan import lifespan
 from utils.import_router import import_router
+from utils.wait_for_api import wait_for_api
 
 
 def create_app() -> FastAPI:
@@ -85,6 +86,11 @@ def _start_processes(
         _uvicorn_command(settings)
         )
     try:
+        wait_for_api(
+            url=ApplicationSettings.get_settings().api_health_endpoint,
+            timeout=ApplicationSettings.get_settings().health_check_timeout
+        )
+        print("ConciergeAI API ready")
         streamlit_process = subprocess.Popen(
             _streamlit_command(settings),
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP

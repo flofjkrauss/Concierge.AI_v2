@@ -7,7 +7,7 @@ from conversation.value_object.intent import Intent
 
 
 #debug
-from conversation.information_extrator import DebugTestInput
+from conversation.models.information.interface import DebugTestInput
 
 
 

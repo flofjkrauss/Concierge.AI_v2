@@ -39,6 +39,15 @@ def has_mail_format(value: object) -> bool:
     
     return _EMAIL_PATTERN.fullmatch(value.strip()) is not None
 
+def is_yes_or_no(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+
+    return any([
+        value == "yes",
+        value == "no"
+        ])
+
 INFORMATION_VALIDATORS: dict[
     InformationField,
     InformationValidator,
@@ -55,5 +64,6 @@ INFORMATION_VALIDATORS: dict[
     InformationField.PREFERRED_LANG: is_non_empty_string,
     InformationField.PHONE: is_non_empty_string,
     InformationField.INFORMATION_TOPIC: is_non_empty_string,
-    InformationField.ROOM_CATEGORY: is_non_empty_string
+    InformationField.ROOM_CATEGORY: is_non_empty_string,
+    InformationField.CONFIRMATION: is_yes_or_no,
 }

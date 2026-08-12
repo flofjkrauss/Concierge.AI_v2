@@ -9,12 +9,13 @@ from domain.entities.room import Room
 from domain.rules.booking import room_matches_booking_request
 from domain.value_objects.room_category import RoomCategory
 from domain.value_objects.stay_period import StayPeriod
-from observability import LOG_MSG
+from observability.log_messages import LOG_MSG
+from observability.utils.to_json import to_jsonable
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(slots=True)
 class MatchResponse:
-    request: BookingRequest
+    request: BookingRequest | None
     rooms: list[Room]
 
 def find_matching_rooms(
@@ -25,8 +26,12 @@ def find_matching_rooms(
     accessible: bool,
     database: DatabaseInterface,
     room_category: RoomCategory = ""
-) -> MatchResponse | None:
+) -> MatchResponse:
     """Return all rooms that satisfy the given booking request."""
+    retval = MatchResponse(
+        request=None,
+        rooms=[]
+    )
     if not all([
         isinstance(check_in, date),
         isinstance(check_out, date),
@@ -35,34 +40,38 @@ def find_matching_rooms(
         isinstance(accessible, bool)
     ]):
         LOG_MSG.error("Invalid data in find_matching_rooms")
-        return None
-    
-    booking_request = BookingRequest(
-        request_id=str(uuid4()),
-        stay_period=StayPeriod(check_in, check_out),
-        guest_count=guest_count,
-        breakfast_included=breakfast,
-        accessible_requested=accessible
-    )
-    LOG_MSG.debug(f"Incoming request {booking_request}")
-    rooms = database.get_rooms()
-    existing_bookings = database.get_bookings()
+        return retval
 
-    matching_rooms = [
-        room
-        for room in rooms
-        if room_matches_booking_request(
-            room=room,
-            category=room_category,
-            booking_request=booking_request,
-            existing_bookings=existing_bookings,
+    try:    
+        booking_request = BookingRequest(
+            request_id=str(uuid4()),
+            stay_period=StayPeriod(check_in, check_out),
+            guest_count=guest_count,
+            breakfast_included=breakfast,
+            accessible_requested=accessible
         )
-    ]
+        retval.request = booking_request
+        rooms = database.get_rooms()
+        existing_bookings = database.get_bookings()
 
-    LOG_MSG.debug(
-        f"Found {len(matching_rooms)} matching rooms for booking request {booking_request.request_id}.")
+        matching_rooms = [
+            room
+            for room in rooms
+            if room_matches_booking_request(
+                room=room,
+                category=room_category,
+                booking_request=booking_request,
+                existing_bookings=existing_bookings,
+            )
+        ]
 
-    return MatchResponse(
-        request=booking_request,
-        rooms=matching_rooms
-    )
+        LOG_MSG.debug(
+            f"Found {len(matching_rooms)} matching rooms for booking request {booking_request.request_id}.", 
+            extra=to_jsonable(booking_request)
+        )
+        retval.rooms = matching_rooms
+
+    except (KeyError, ValueError, TypeError) as error:
+        LOG_MSG.error(f"find_matching_room failed due to an exception: {error}")
+    finally:
+        return retval

@@ -20,7 +20,7 @@ from conversation.graph.state import (
     ExpectedInteractionKind,
     MessageRole,
 )
-from conversation.information_extrator import InformationExtractor
+from conversation.models.information.interface import InformationExtractorInterface
 from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
@@ -37,7 +37,7 @@ from domain.services.calculate_price import calculate_price
 from domain.services.cancel_booking import cancel_booking_by_name
 from domain.services.confirm_booking import confirm_booking
 from domain.services.create_customer import create_customer
-from domain.services.find_matching_rooms import find_matching_rooms
+from domain.services.find_matching_rooms import find_matching_rooms, MatchResponse
 from domain.services.get_booking import get_booking_by_name
 from domain.services.get_information import get_information
 from domain.value_objects.booking_status import BookingStatus
@@ -74,7 +74,14 @@ class DatabaseDomainAdapter:
 
         match operation:
             case DomainOperation.FIND_AVAILABILITY:
-                (check_in, check_out, guest_count, accessible, breakfast) = _booking_request_tuple_from_information(information)
+                (
+                    check_in,
+                    check_out,
+                    guest_count,
+                    accessible,
+                    breakfast,
+                ) = _booking_request_tuple_from_information(information)
+
                 return find_matching_rooms(
                     check_in=check_in,
                     check_out=check_out,
@@ -83,137 +90,181 @@ class DatabaseDomainAdapter:
                     accessible=accessible,
                     database=self.database,
                 )
+
             case DomainOperation.GET_BOOKING:
                 last_name = _required_string(
                     information,
-                    InformationField.LAST_NAME
+                    InformationField.LAST_NAME,
                 )
                 email = _required_string(
                     information,
-                    InformationField.EMAIL
+                    InformationField.EMAIL,
                 )
                 check_in = _required_date(
                     information,
-                    InformationField.CHECK_IN
+                    InformationField.CHECK_IN,
                 )
+
                 booking = get_booking_by_name(
                     last_name=last_name,
                     email=email,
                     check_in=check_in,
-                    database=self.database)
+                    database=self.database,
+                )
 
-                return _build_booking_response_data(booking=booking, database=self.database)
-            
+                return _build_booking_response_data(
+                    booking=booking,
+                    database=self.database,
+                )
+
             case DomainOperation.CREATE_BOOKING:
                 room_category = _required_string(
                     information,
-                    InformationField.ROOM_CATEGORY
+                    InformationField.ROOM_CATEGORY,
                 )
-                (check_in, check_out, guest_count, accessible, breakfast) = _booking_request_tuple_from_information(information)
-                match_response =  find_matching_rooms(
+
+                (
+                    check_in,
+                    check_out,
+                    guest_count,
+                    accessible,
+                    breakfast,
+                ) = _booking_request_tuple_from_information(information)
+
+                match_response = find_matching_rooms(
                     check_in=check_in,
                     check_out=check_out,
                     guest_count=guest_count,
                     breakfast=breakfast,
                     accessible=accessible,
                     database=self.database,
-                    room_category=room_category
+                    room_category=room_category,
                 )
-                if len(match_response.rooms) > 0:
-                    customer = _create_customer_from_information(information, database=self.database)
-                    booking = confirm_booking(
-                        booking_request=match_response.request,
-                        room_category=room_category,
-                        customer=customer,
-                        database=self.database
-                    )
-                    return _build_booking_response_data(booking=booking, database=self.database)
+
+                if not match_response.rooms:
+                    return match_response
+
+                customer = _create_customer_from_information(
+                    information,
+                    database=self.database,
+                )
+
+                booking = confirm_booking(
+                    booking_request=match_response.request,
+                    room_category=room_category,
+                    customer=customer,
+                    database=self.database,
+                )
+
+                return _build_booking_response_data(
+                    booking=booking,
+                    database=self.database,
+                )
+
             case DomainOperation.CANCEL_BOOKING:
                 last_name = _required_string(
                     information,
-                    InformationField.LAST_NAME
+                    InformationField.LAST_NAME,
                 )
                 email = _required_string(
                     information,
-                    InformationField.EMAIL
+                    InformationField.EMAIL,
                 )
                 check_in = _required_date(
                     information,
-                    InformationField.CHECK_IN
+                    InformationField.CHECK_IN,
                 )
+
                 booking = cancel_booking_by_name(
                     last_name=last_name,
                     email=email,
                     check_in=check_in,
                     database=self.database,
                 )
-                return _build_booking_response_data(booking=booking, database=self.database)
+
+                return _build_booking_response_data(
+                    booking=booking,
+                    database=self.database,
+                )
+
             case DomainOperation.PREVIEW_BOOKING:
                 room_category = _required_string(
                     information,
-                    InformationField.ROOM_CATEGORY
+                    InformationField.ROOM_CATEGORY,
                 )
                 first_name = _required_string(
                     information,
-                    InformationField.FIRST_NAME
+                    InformationField.FIRST_NAME,
                 )
                 last_name = _required_string(
                     information,
-                    InformationField.LAST_NAME
+                    InformationField.LAST_NAME,
                 )
                 phone = _optional_string(
                     information,
                     InformationField.PHONE,
-                    default="not given"
+                    default="not given",
                 )
                 email = _required_string(
                     information,
-                    InformationField.EMAIL
+                    InformationField.EMAIL,
                 )
-                (check_in, check_out, guest_count, accessible, breakfast) = _booking_request_tuple_from_information(information)
-                match_response =  find_matching_rooms(
+
+                (
+                    check_in,
+                    check_out,
+                    guest_count,
+                    accessible,
+                    breakfast,
+                ) = _booking_request_tuple_from_information(information)
+
+                match_response = find_matching_rooms(
                     check_in=check_in,
                     check_out=check_out,
                     guest_count=guest_count,
                     breakfast=breakfast,
                     accessible=accessible,
                     database=self.database,
-                    room_category=room_category
+                    room_category=room_category,
                 )
-                
-                if len(match_response.rooms) > 0:
-                    room = match_response.rooms[0]                    
-                    total_price = calculate_price(
-                        booking_request=match_response.request,
-                        room=room,
-                        database=self.database
-                        )
-                    return BookingResponseObject(
-                        status=BookingStatus.PENDING,
-                        room_category=room_category,
-                        guest_count=guest_count,
-                        check_in=check_in,
-                        check_out=check_out,
-                        total_prize=total_price,
-                        accessible=accessible,
-                        breakfast=breakfast,
-                        first_name=first_name,
-                        last_name=last_name,
-                        email=email,
-                        phone=phone
-                    )
-                
 
+                if not match_response.rooms:
+                    return match_response
+
+                room = match_response.rooms[0]
+
+                total_price = calculate_price(
+                    booking_request=match_response.request,
+                    room=room,
+                    database=self.database,
+                )
+
+                return BookingResponseObject(
+                    status=BookingStatus.PENDING,
+                    room_category=room_category,
+                    guest_count=guest_count,
+                    check_in=check_in,
+                    check_out=check_out,
+                    total_prize=total_price,
+                    accessible=accessible,
+                    breakfast=breakfast,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    phone=phone,
+                )
 
             case DomainOperation.GET_INFORMATION:
                 topic_value = _required_string(
                     information,
                     InformationField.INFORMATION_TOPIC,
                 )
+
                 return get_information(
                     topic=InformationTopic(topic_value),
                     database=self.database,
                 )
+
             case _ as unreachable:
                 assert_never(unreachable)
 
@@ -224,7 +275,7 @@ class ConversationNodes:
 
     translator: TranslatorInterface
     intent_classifier: IntentionDetectorInterface
-    information_extractor: InformationExtractor
+    information_extractor: InformationExtractorInterface
     user_interaction: UserInteraction
     domain_adapter: ConversationDomainAdapter
     domain_language: str
@@ -238,7 +289,7 @@ class ConversationNodes:
             "translated_message": None,
             "detected_intent": None,
             "extracted_information": [],
-            "changed_information": [],
+            "changed_fields": [],
             "action": None,
             "domain_operation": None,
             "domain_data": None,
@@ -254,7 +305,11 @@ class ConversationNodes:
                 raise ValueError("A new conversation requires a session_id")
 
             init_intent = Intent.CONVERSATION_INITIATION
-            response = self.user_interaction.display_greeting(intent=init_intent, data=session_id)
+            response = self.user_interaction.display_greeting(
+                intent=init_intent,
+                data=session_id,
+            )
+
             updates.update(
                 {
                     "initialized": True,
@@ -274,8 +329,10 @@ class ConversationNodes:
             return updates
 
         raw_message = state.get("incoming_message")
+
         if raw_message is None or not raw_message.strip():
             empty_response = self.user_interaction.send_empty_response()
+
             updates.update(
                 {
                     "response": empty_response,
@@ -285,11 +342,15 @@ class ConversationNodes:
             )
             return updates
 
-        parsed_message = self.user_interaction.parse_message(raw_message=raw_message)
+        parsed_message = self.user_interaction.parse_message(
+            raw_message=raw_message,
+        )
+
         if parsed_message is None:
             error_response = self.user_interaction.send_error_msg(
                 reason="Invalid message",
             )
+
             updates.update(
                 {
                     "response": error_response,
@@ -302,7 +363,6 @@ class ConversationNodes:
         updates["parsed_message"] = parsed_message
         return updates
 
-
     def translate_input(self, state: ConversationState) -> StateUpdate:
         """Detect the session language once and translate input to English."""
 
@@ -310,22 +370,34 @@ class ConversationNodes:
         session_language = state.get("language")
 
         if session_language is None:
-            detected_language = self.translator.determine(parsed_message).strip()
+            detected_language = self.translator.determine(
+                parsed_message
+            ).strip()
             session_language = detected_language or self.domain_language
 
         translated = parsed_message
+
         if session_language != self.domain_language:
             translated = self.translator.translate(
                 parsed_message,
                 target_lang=self.domain_language,
-                source_lang=session_language
+                source_lang=session_language,
             )
 
         normalized = replace(
             translated,
             language=session_language,
         )
+
+        preferred_language = Information(
+            information_field=InformationField.PREFERRED_LANG,
+            content=session_language,
+        )
+
         return {
+            "collected_information": {
+                InformationField.PREFERRED_LANG: preferred_language,
+            },
             "language": session_language,
             "translated_message": normalized,
         }
@@ -334,9 +406,13 @@ class ConversationNodes:
         """Append the normalized user message to authoritative history."""
 
         message = _required_message(state, "translated_message")
+
         return {
             "message_history": [
-                ConversationMessage(role=MessageRole.USER, message=message)
+                ConversationMessage(
+                    role=MessageRole.USER,
+                    message=message,
+                )
             ]
         }
 
@@ -355,6 +431,7 @@ class ConversationNodes:
         """Extract information on every turn, independently of intent."""
 
         message = _required_message(state, "translated_message")
+
         return {
             "extracted_information": self.information_extractor.extract(
                 message=message,
@@ -365,44 +442,77 @@ class ConversationNodes:
         """Merge extracted values and apply the consecutive-unknown rule."""
 
         existing_information = state.get("collected_information", {})
-        extracted = state.get("extracted_information", [])
+        extracted = list(state.get("extracted_information", []))
+        next_missing_field = state.get("next_missing_field")
+
+        if next_missing_field in {
+            InformationField.BREAKFAST,
+            InformationField.ACCESSIBLE,
+        }:
+            extracted = [
+                Information(
+                    information_field=next_missing_field,
+                    content=(information.content == "yes"),
+                )
+                if (
+                    information.information_field
+                    == InformationField.CONFIRMATION
+                    and information.content in {"yes", "no"}
+                )
+                else information
+                for information in extracted
+            ]
+
         changed_fields = {
-        information.information_field
-        for information in extracted
-        if (
-            information.information_field in existing_information
-            and existing_information[information.information_field].content != information.content
-        )
-}
+            information.information_field
+            for information in extracted
+            if (
+                information.information_field in existing_information
+                and existing_information[
+                    information.information_field
+                ].content
+                != information.content
+            )
+        }
+
         intent = state.get("detected_intent") or Intent.UNKNOWN
         unknown_counter = state.get("unknown_counter", 0)
         current_message = state.get("translated_message")
+
         is_confirmation_reply = (
             state.get("expected_interaction") is not None
             and isinstance(current_message, Message)
             and _confirmation_decision(current_message.content) is not None
         )
 
-        if intent == Intent.UNKNOWN and not extracted and not is_confirmation_reply:
+        if (
+            intent == Intent.UNKNOWN
+            and not extracted
+            and not is_confirmation_reply
+        ):
             unknown_counter += 1
         else:
             unknown_counter = 0
 
         information_updates = {
-            information.information_field: information for information in extracted
+            information.information_field: information
+            for information in extracted
         }
 
         return {
             "collected_information": information_updates,
             "changed_fields": list(changed_fields),
             "unknown_counter": unknown_counter,
-            "termination_requested": (unknown_counter > self.max_unknown_messages),
+            "termination_requested": (
+                unknown_counter > self.max_unknown_messages
+            ),
         }
 
     def resolve_confirmation(self, state: ConversationState) -> StateUpdate:
         """Interpret a reply only when an explicit confirmation is pending."""
 
         expected = state.get("expected_interaction")
+
         if expected is None:
             raise ValueError("No confirmation is pending")
 
@@ -410,9 +520,13 @@ class ConversationNodes:
             information.information_field
             for information in state.get("extracted_information", [])
         }
+
         required_fields = set(
-            IntentInformationMapper.determine_fields(intent=expected.intent)
+            IntentInformationMapper.determine_fields(
+                intent=expected.intent,
+            )
         )
+
         if changed_fields & required_fields:
             return {
                 "expected_interaction": None,
@@ -423,6 +537,7 @@ class ConversationNodes:
 
         message = _required_message(state, "translated_message")
         decision = _confirmation_decision(message.content)
+
         if decision is True:
             return {
                 "expected_interaction": None,
@@ -430,6 +545,7 @@ class ConversationNodes:
                 "domain_operation": expected.operation,
                 "confirmation_outcome": ConfirmationOutcome.CONFIRMED,
             }
+
         if decision is False:
             return {
                 "expected_interaction": None,
@@ -442,7 +558,11 @@ class ConversationNodes:
             }
 
         detected_intent = state.get("detected_intent") or Intent.UNKNOWN
-        if detected_intent not in {Intent.UNKNOWN, expected.intent}:
+
+        if detected_intent not in {
+            Intent.UNKNOWN,
+            expected.intent,
+        }:
             return {
                 "expected_interaction": None,
                 "confirmation_outcome": ConfirmationOutcome.INTERRUPTED,
@@ -450,17 +570,44 @@ class ConversationNodes:
 
         return {
             "action": Action.ASK_FOR_CONFIRMATION,
-            "domain_data": dict(state.get("collected_information", {})),
+            "domain_data": dict(
+                state.get("collected_information", {})
+            ),
             "confirmation_outcome": ConfirmationOutcome.UNCLEAR,
         }
 
     def activate_intent(self, state: ConversationState) -> StateUpdate:
-        """Resolve whether to switch, resume, greet, or ask for an intent."""
-
         detected = state.get("detected_intent") or Intent.UNKNOWN
-        current = state.get("current_intent", Intent.CONVERSATION_INITIATION)
+        current = state.get(
+            "current_intent",
+            Intent.CONVERSATION_INITIATION,
+        )
         changed_fields = set(state.get("changed_fields", []))
-        
+
+        requested_field = state.get("next_missing_field")
+        extracted_fields = {
+            information.information_field
+            for information in state.get("extracted_information", [])
+        }
+
+        if (
+            requested_field is not None
+            and requested_field in extracted_fields
+        ):
+            return {
+                "current_intent": current,
+                "last_intent_fulfilled": False,
+            }
+
+        if (
+            detected == Intent.UNKNOWN
+            and extracted_fields
+            == {InformationField.INFORMATION_TOPIC}
+        ):
+            return {
+                "current_intent": Intent.INFORMATION_REQUEST,
+                "last_intent_fulfilled": False,
+            }
 
         if detected == Intent.CONVERSATION_INITIATION:
             return {
@@ -474,8 +621,17 @@ class ConversationNodes:
                 "last_intent_fulfilled": False,
             }
 
-        required_fields = set(IntentInformationMapper.determine_fields(intent=current))
-        current_is_open = not state.get("last_intent_fulfilled", False)
+        required_fields = set(
+            IntentInformationMapper.determine_fields(
+                intent=current,
+            )
+        )
+
+        current_is_open = not state.get(
+            "last_intent_fulfilled",
+            False,
+        )
+
         if current_is_open or bool(changed_fields & required_fields):
             return {
                 "current_intent": current,
@@ -487,23 +643,41 @@ class ConversationNodes:
             "domain_data": None,
         }
 
-    def determine_missing_fields(self, state: ConversationState) -> StateUpdate:
+    def determine_missing_fields(
+        self,
+        state: ConversationState,
+    ) -> StateUpdate:
         """Calculate required fields for the active intent from graph state."""
 
         current_intent = state.get(
             "current_intent",
             Intent.CONVERSATION_INITIATION,
         )
+
         required_fields = IntentInformationMapper.determine_fields(
             intent=current_intent,
         )
+
         information = state.get("collected_information", {})
+
         missing_fields = [
             field
             for field in required_fields
-            if field not in information or not information[field].is_valid()
+            if (
+                field not in information
+                or not information[field].is_valid()
+            )
         ]
-        return {"missing_fields": missing_fields}
+
+        next_missing_field = None
+
+        if missing_fields:
+            next_missing_field = missing_fields[0]
+
+        return {
+            "missing_fields": missing_fields,
+            "next_missing_field": next_missing_field,
+        }
 
     def determine_action(self, state: ConversationState) -> StateUpdate:
         """Select a response action or domain operation deterministically."""
@@ -512,7 +686,9 @@ class ConversationNodes:
             "current_intent",
             Intent.CONVERSATION_INITIATION,
         )
+
         missing_fields = state.get("missing_fields", [])
+
         if missing_fields:
             return {
                 "action": Action.ASK_FOR_DATA,
@@ -526,40 +702,55 @@ class ConversationNodes:
             Intent.INFORMATION_REQUEST: DomainOperation.GET_INFORMATION,
             Intent.BOOKING_CANCELLATION: DomainOperation.GET_BOOKING,
         }
+
         operation = operation_by_intent.get(current_intent)
+
         if operation is not None:
-            return {"domain_operation": operation}
-
-        if current_intent == Intent.BOOKING_REQUEST:
-            expected = ExpectedInteraction(
-                kind=ExpectedInteractionKind.BOOKING_CONFIRMATION,
-                intent=current_intent,
-                operation=DomainOperation.CREATE_BOOKING,
-            )
-
             return {
-                "domain_operation": DomainOperation.PREVIEW_BOOKING,
-                "last_intent_fulfilled": False
+                "domain_operation": operation,
             }
 
-        return {"action": Action.ASK_INTENT, "domain_data": None}
+        if current_intent == Intent.BOOKING_REQUEST:
+            return {
+                "domain_operation": DomainOperation.PREVIEW_BOOKING,
+                "last_intent_fulfilled": False,
+            }
 
-    def execute_domain_action(self, state: ConversationState) -> StateUpdate:
+        return {
+            "action": Action.ASK_INTENT,
+            "domain_data": None,
+        }
+
+    def execute_domain_action(
+        self,
+        state: ConversationState,
+    ) -> StateUpdate:
         """Delegate a selected operation and retain only its result in state."""
 
         operation = state.get("domain_operation")
+
         if operation is None:
             raise ValueError("No domain operation was selected")
-        
-       
 
         try:
             result = self.domain_adapter.execute(
                 operation=operation,
-                information=state.get("collected_information", {}),
+                information=state.get(
+                    "collected_information",
+                    {},
+                ),
             )
-        except (KeyError, RuntimeError, TypeError, ValueError) as error:
-            response = self.user_interaction.send_error_msg(reason=str(error))
+
+        except (
+            KeyError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+        ) as error:
+            response = self.user_interaction.send_error_msg(
+                reason=str(error),
+            )
+
             return {
                 "domain_operation": None,
                 "response": response,
@@ -567,6 +758,23 @@ class ConversationNodes:
                 "session_active": response.session_active,
                 "last_intent_fulfilled": False,
             }
+
+        if (
+            operation
+            in {
+                DomainOperation.PREVIEW_BOOKING,
+                DomainOperation.CREATE_BOOKING,
+            }
+            and isinstance(result, MatchResponse)
+        ):
+            return {
+                "domain_operation": None,
+                "domain_data": result,
+                "action": Action.DISPLAY_AVAILABILITY,
+                "expected_interaction": None,
+                "last_intent_fulfilled": True,
+            }
+
         if operation == DomainOperation.PREVIEW_BOOKING:
             expected = ExpectedInteraction(
                 kind=ExpectedInteractionKind.BOOKING_CONFIRMATION,
@@ -581,10 +789,11 @@ class ConversationNodes:
                 "expected_interaction": expected,
                 "last_intent_fulfilled": False,
             }
-        
+
         if (
             operation == DomainOperation.GET_BOOKING
-            and state.get("current_intent") == Intent.BOOKING_CANCELLATION
+            and state.get("current_intent")
+            == Intent.BOOKING_CANCELLATION
         ):
             if result is None:
                 return {
@@ -594,22 +803,24 @@ class ConversationNodes:
                     "last_intent_fulfilled": False,
                 }
 
-            
-
-            if isinstance(result, BookingResponseObject) and result.status == BookingStatus.CANCELLED:
-                    return {
-                        "domain_operation": None,
-                        "domain_data": result,
-                        "action": Action.DISPLAY_BOOKING,
-                        "expected_interaction": None,
-                        "last_intent_fulfilled": True,
-                    }
+            if (
+                isinstance(result, BookingResponseObject)
+                and result.status == BookingStatus.CANCELLED
+            ):
+                return {
+                    "domain_operation": None,
+                    "domain_data": result,
+                    "action": Action.DISPLAY_BOOKING,
+                    "expected_interaction": None,
+                    "last_intent_fulfilled": True,
+                }
 
             expected = ExpectedInteraction(
                 kind=ExpectedInteractionKind.CANCELLATION_CONFIRMATION,
                 intent=Intent.BOOKING_CANCELLATION,
                 operation=DomainOperation.CANCEL_BOOKING,
             )
+
             return {
                 "domain_operation": None,
                 "domain_data": result,
@@ -617,7 +828,6 @@ class ConversationNodes:
                 "expected_interaction": expected,
                 "last_intent_fulfilled": False,
             }
-        
 
         response_action = {
             DomainOperation.FIND_AVAILABILITY: Action.DISPLAY_AVAILABILITY,
@@ -625,8 +835,9 @@ class ConversationNodes:
             DomainOperation.CREATE_BOOKING: Action.DISPLAY_BOOKING,
             DomainOperation.CANCEL_BOOKING: Action.DISPLAY_BOOKING,
             DomainOperation.GET_INFORMATION: Action.DISPLAY_INFO,
-            DomainOperation.PREVIEW_BOOKING: Action.DISPLAY_BOOKING
+            DomainOperation.PREVIEW_BOOKING: Action.DISPLAY_BOOKING,
         }[operation]
+
         return {
             "domain_operation": None,
             "domain_data": result,
@@ -638,12 +849,16 @@ class ConversationNodes:
         """Build an ``InteractionResponse`` through the existing UI component."""
 
         existing_response = state.get("response")
+
         if existing_response is not None:
             return {}
 
         action = state.get("action")
+
         if action is None:
-            raise ValueError("Response construction requires an action")
+            raise ValueError(
+                "Response construction requires an action"
+            )
 
         response = self.user_interaction.build_response(
             action=action,
@@ -653,19 +868,24 @@ class ConversationNodes:
             ),
             data=state.get("domain_data"),
         )
+
         return {
             "response": response,
             "response_in_domain_language": response.text,
             "session_active": response.session_active,
         }
 
-    def terminate_conversation(self, state: ConversationState) -> StateUpdate:
+    def terminate_conversation(
+        self,
+        state: ConversationState,
+    ) -> StateUpdate:
         """Return the final error response after too many unknown turns."""
 
         response = self.user_interaction.send_error_msg(
             reason="Unknown intent threshold exceeded",
             session_active=False,
         )
+
         return {
             "response": response,
             "response_in_domain_language": response.text,
@@ -673,38 +893,65 @@ class ConversationNodes:
             "expected_interaction": None,
         }
 
-    def translate_response(self, state: ConversationState) -> StateUpdate:
+    def translate_response(
+        self,
+        state: ConversationState,
+    ) -> StateUpdate:
         """Translate a response copy into the session language."""
 
         response = state.get("response")
+
         if response is None or not response.text:
             return {}
 
-        session_language = state.get("language") or self.domain_language
+        session_language = (
+            state.get("language")
+            or self.domain_language
+        )
+
         if session_language == self.domain_language:
             return {}
 
         translated = self.translator.translate(
             Message(content=response.text),
             target_lang=session_language,
-            source_lang=self.domain_language
+            source_lang=self.domain_language,
         )
-        return {"response": replace(response, text=translated.content)}
 
-    def store_assistant_message(self, state: ConversationState) -> StateUpdate:
+        return {
+            "response": replace(
+                response,
+                text=translated.content,
+            )
+        }
+
+    def store_assistant_message(
+        self,
+        state: ConversationState,
+    ) -> StateUpdate:
         """Append the assistant's domain-language and displayed text to history."""
 
         response = state.get("response")
+
         if response is None or not response.text:
             return {}
 
-        domain_text = state.get("response_in_domain_language") or response.text
-        session_language = state.get("language") or self.domain_language
+        domain_text = (
+            state.get("response_in_domain_language")
+            or response.text
+        )
+
+        session_language = (
+            state.get("language")
+            or self.domain_language
+        )
+
         message = Message(
             content=domain_text,
             original_content=response.text,
             language=session_language,
         )
+
         return {
             "message_history": [
                 ConversationMessage(
@@ -715,103 +962,155 @@ class ConversationNodes:
         }
 
     def write_state_to_logs(
-            self,
-            state: ConversationState,
-        ) -> StateUpdate:
-            """Write conversation state to logs after processing a message."""
+        self,
+        state: ConversationState,
+    ) -> StateUpdate:
+        """Write conversation state to logs after processing a message."""
 
-            LOG_MSG.debug(
-                "Conversation message processed",
-                extra=to_jsonable(state)
-            )
+        LOG_MSG.debug(
+            "Conversation message processed",
+            extra=to_jsonable(state),
+        )
 
-            return {
-                "initialized": state["initialized"],
-            }
-    
+        return {
+            "initialized": state["initialized"],
+        }
+
+
 def _required_message(
     state: ConversationState,
     key: Literal["parsed_message", "translated_message"],
 ) -> Message:
     value = state.get(key)
+
     if not isinstance(value, Message):
-        raise TypeError(f"State field {key} must contain a Message")
+        raise TypeError(
+            f"State field {key} must contain a Message"
+        )
+
     return value
 
 
-def _contextual_model_message(
-    state: ConversationState,
-    domain_language: str,
-) -> Message:
-    current = _required_message(state, "translated_message")
-    history_lines = [
-        f"{entry.role.value.title()}: {entry.message.content}"
-        for entry in state.get("message_history", [])
-        if entry.message_id != current.message_id
-    ]
-    history = "\n".join(history_lines) or "(no previous messages)"
-    content = (
-        f"Conversation history:\n{history}\n\nCurrent user message:\n{current.content}"
-    )
-    return replace(current, content=content, language=domain_language)
-
-
 def _confirmation_decision(content: str) -> bool | None:
-    normalized = " ".join(content.casefold().strip().split()).strip(".,!?")
-    affirmative = {"yes", "yes please", "confirm", "confirmed", "proceed"}
-    negative = {"no", "no thanks", "decline", "stop"}
+    normalized = " ".join(
+        content.casefold().strip().split()
+    ).strip(".,!?")
+
+    affirmative = {
+        "yes",
+        "yes please",
+        "confirm",
+        "confirmed",
+        "proceed",
+    }
+
+    negative = {
+        "no",
+        "no thanks",
+        "decline",
+        "stop",
+    }
+
     if normalized in affirmative:
         return True
+
     if normalized in negative:
         return False
+
     return None
 
 
 def _booking_request_tuple_from_information(
     information: Mapping[InformationField, Information],
 ) -> tuple[date, date, int, bool, bool | None]:
-    check_in = _required_date(information, InformationField.CHECK_IN)
-    check_out = _required_date(information, InformationField.CHECK_OUT)
-    guest_count = _required_int(information, InformationField.GUEST_COUNT)
-    accessible = _required_bool(information, InformationField.ACCESSIBLE)
+    check_in = _required_date(
+        information,
+        InformationField.CHECK_IN,
+    )
+    check_out = _required_date(
+        information,
+        InformationField.CHECK_OUT,
+    )
+    guest_count = _required_int(
+        information,
+        InformationField.GUEST_COUNT,
+    )
+    accessible = _required_bool(
+        information,
+        InformationField.ACCESSIBLE,
+    )
     breakfast = _optional_bool(
         information,
         InformationField.BREAKFAST,
         default=False,
     )
-    return (check_in, check_out, guest_count, accessible, breakfast)
+
+    return (
+        check_in,
+        check_out,
+        guest_count,
+        accessible,
+        breakfast,
+    )
+
 
 def _create_customer_from_information(
-        information: Mapping[InformationField, Information],
-        database: DatabaseInterface
+    information: Mapping[InformationField, Information],
+    database: DatabaseInterface,
 ) -> Customer:
-    first_name = _required_string(information, InformationField.FIRST_NAME)
-    last_name = _required_string(information, InformationField.LAST_NAME)
-    email = _required_string(information, InformationField.EMAIL)
-    preferred_language = _required_string(information, InformationField.PREFERRED_LANG)
+    first_name = _required_string(
+        information,
+        InformationField.FIRST_NAME,
+    )
+    last_name = _required_string(
+        information,
+        InformationField.LAST_NAME,
+    )
+    email = _required_string(
+        information,
+        InformationField.EMAIL,
+    )
+    preferred_language = _required_string(
+        information,
+        InformationField.PREFERRED_LANG,
+    )
     phone = _optional_string(
         information,
         InformationField.PHONE,
         default="0",
     )
+
     customer = create_customer(
         first_name=first_name,
         last_name=last_name,
         email=email,
         phone=phone,
         preferred_language=preferred_language,
-        database=database
+        database=database,
     )
+
     if not isinstance(customer, Customer):
-        raise TypeError("error in _create_customer_from_information")
+        raise TypeError(
+            "error in _create_customer_from_information"
+        )
+
     return customer
 
-def _build_booking_response_data(booking: Booking, database: DatabaseInterface) -> BookingResponseObject | None:
+
+def _build_booking_response_data(
+    booking: Booking,
+    database: DatabaseInterface,
+) -> BookingResponseObject | None:
     if booking is None:
         return None
-    
-    customer = database.get_customer(booking.customer_id)
-    room = database.get_room(booking.room_id)
+
+    customer = database.get_customer(
+        booking.customer_id
+    )
+    room = database.get_room(
+        booking.room_id
+    )
+
     return BookingResponseObject(
         status=booking.status,
         room_category=room.category,
@@ -824,7 +1123,7 @@ def _build_booking_response_data(booking: Booking, database: DatabaseInterface) 
         first_name=customer.first_name,
         last_name=customer.last_name,
         email=customer.email,
-        phone=customer.phone
+        phone=customer.phone,
     )
 
 
@@ -834,17 +1133,27 @@ def _required_content(
 ) -> str | bool | int | date:
     try:
         return information[field].content
+
     except KeyError as error:
-        raise KeyError(f"Missing required information: {field.value}") from error
+        raise KeyError(
+            f"Missing required information: {field.value}"
+        ) from error
 
 
 def _required_string(
     information: Mapping[InformationField, Information],
     field: InformationField,
 ) -> str:
-    value = _required_content(information, field)
+    value = _required_content(
+        information,
+        field,
+    )
+
     if not isinstance(value, str):
-        raise TypeError(f"{field.value} must be a string")
+        raise TypeError(
+            f"{field.value} must be a string"
+        )
+
     return value
 
 
@@ -852,9 +1161,16 @@ def _required_bool(
     information: Mapping[InformationField, Information],
     field: InformationField,
 ) -> bool:
-    value = _required_content(information, field)
+    value = _required_content(
+        information,
+        field,
+    )
+
     if not isinstance(value, bool):
-        raise TypeError(f"{field.value} must be a boolean")
+        raise TypeError(
+            f"{field.value} must be a boolean"
+        )
+
     return value
 
 
@@ -865,11 +1181,17 @@ def _optional_bool(
     default: bool,
 ) -> bool:
     value = information.get(field)
+
     if value is None:
         return default
+
     if not isinstance(value.content, bool):
-        raise TypeError(f"{field.value} must be a boolean")
+        raise TypeError(
+            f"{field.value} must be a boolean"
+        )
+
     return value.content
+
 
 def _optional_string(
     information: Mapping[InformationField, Information],
@@ -878,10 +1200,15 @@ def _optional_string(
     default: str,
 ) -> str:
     value = information.get(field)
+
     if value is None:
         return default
+
     if not isinstance(value.content, str):
-        raise TypeError(f"{field.value} must be a string")
+        raise TypeError(
+            f"{field.value} must be a string"
+        )
+
     return value.content
 
 
@@ -889,9 +1216,16 @@ def _required_int(
     information: Mapping[InformationField, Information],
     field: InformationField,
 ) -> int:
-    value = _required_content(information, field)
+    value = _required_content(
+        information,
+        field,
+    )
+
     if isinstance(value, bool) or not isinstance(value, int):
-        raise TypeError(f"{field.value} must be an integer")
+        raise TypeError(
+            f"{field.value} must be an integer"
+        )
+
     return value
 
 
@@ -899,9 +1233,16 @@ def _required_date(
     information: Mapping[InformationField, Information],
     field: InformationField,
 ) -> date:
-    value = _required_content(information, field)
+    value = _required_content(
+        information,
+        field,
+    )
+
     if not isinstance(value, date):
-        raise TypeError(f"{field.value} must be a date")
+        raise TypeError(
+            f"{field.value} must be a date"
+        )
+
     return value
 
 
@@ -916,6 +1257,7 @@ def nodes_from_settings(
     """Create graph nodes from the existing application settings."""
 
     settings = ApplicationSettings.get_settings()
+
     return ConversationNodes(
         translator=translator,
         intent_classifier=intent_classifier,
@@ -925,4 +1267,3 @@ def nodes_from_settings(
         domain_language=settings.domain_language,
         max_unknown_messages=settings.max_num_msg_with_intent_unknown,
     )
-

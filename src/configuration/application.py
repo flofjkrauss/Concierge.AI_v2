@@ -19,6 +19,14 @@ class ApplicationSettings(Settings):
     host: str = "127.0.0.1"
     port: int = 8000
     reload: bool = False
+    api_health_endpoint = "".join([
+        "http://",
+        host,
+        ":",
+        str(port),
+        "/api/fastapi-status"
+    ])
+    health_check_timeout: float = 20.0
 
     # Streamlit client server config
     streamlit_host: str = "127.0.0.1"
@@ -59,3 +67,8 @@ class ApplicationSettings(Settings):
     intent_processing_unit: str = primary_processing_unit
     intent_detection_model_data_folder: Path = conversation_path / "models" / "intent" / "model_data"
     intent_detection_model: Path = intent_detection_model_data_folder / "intent-classifier"
+
+    #information extraction
+    information_processing_unit: str = primary_processing_unit
+    information_extraction_model_data_folder: Path = conversation_path / "models" / "information" / "model_data"
+    information_extraction_model: Path = information_extraction_model_data_folder / "Qwen3-8B-Q4_K_M.gguf"
