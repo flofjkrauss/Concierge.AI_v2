@@ -86,24 +86,18 @@ def get_system_prompt() -> str:
         - cancelling a booking
 
     confirmation:
-        A standalone affirmative or negative response.
-        Use exactly "yes" or "no".
+        Interpret a standalone affirmative or negative response in the
+        language used by the user. The input may be in any language.
+        Normalize an explicit acceptance to exactly "yes" and an explicit
+        rejection to exactly "no".
 
-    CONFIRMATION EXAMPLES:
+        Only return confirmation when the whole message is a direct answer
+        to a yes-or-no question. A positive or negative statement about a
+        supported field belongs to that field instead. For example, rejecting
+        breakfast means breakfast=false, not confirmation="no".
 
-        "yes"
-        -> confirmation="yes"
-
-        "no"
-        -> confirmation="no"
-
-        "no breakfast"
-        -> breakfast=false
-        -> NO confirmation
-
-        "I don't need an accessible room"
-        -> accessible=false
-        -> NO confirmation
+        If the response is ambiguous, conditional, or does not clearly accept
+        or reject, omit confirmation.
 
 
     DATE RULES:

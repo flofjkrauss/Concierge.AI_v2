@@ -5,6 +5,7 @@ from __future__ import annotations
 from .context import ConversationNodeContext
 from .support import (
     _BOOKING_FLOW_INTENTS,
+    _DATA_INTENTS,
     _REQUEST_INFORMATION_FIELDS,
     _SESSION_IDENTITY_FIELDS,
     _UNSUPPORTED_INFORMATION_RESPONSE,
@@ -25,6 +26,7 @@ from .support import (
     _information_change_data,
     _information_removals,
     _invalid_date_to_report,
+    _open_requested_fields,
     _plausible_information,
     _refines_fulfilled_intent,
     _safe_log_warning,
@@ -44,8 +46,18 @@ def update_progress(
         translated_message.content if isinstance(translated_message, Message) else ""
     )
     requested_field = state.get("next_missing_field") if expected is None else None
+    extracted = state.get("extracted_information", [])
+    confirmation_information = (
+        [
+            information
+            for information in extracted
+            if information.information_field == InformationField.CONFIRMATION
+        ]
+        if expected is not None
+        else []
+    )
     extracted = _coerce_requested_date(
-        state.get("extracted_information", []),
+        extracted,
         requested_field,
         current_content,
     )
@@ -57,6 +69,11 @@ def update_progress(
         extracted,
         current_content,
     )
+    requested_fields = _open_requested_fields(state)
+    continues_requested_intent = any(
+        information.information_field in requested_fields
+        for information in extracted
+    )
     information_change_pending = (
         expected is not None
         and expected.kind == ExpectedInteractionKind.INFORMATION_CHANGE_CONFIRMATION
@@ -65,11 +82,15 @@ def update_progress(
         expected is not None and not information_change_pending
     )
 
-    active_intent = (
-        expected.intent
-        if information_change_pending
-        else _active_data_intent(state, extracted)
-    )
+    if information_change_pending:
+        active_intent = expected.intent
+    elif continues_requested_intent:
+        current_intent = state.get("current_intent")
+        active_intent = (
+            current_intent if current_intent in _DATA_INTENTS else None
+        )
+    else:
+        active_intent = _active_data_intent(state, extracted)
     relevant_fields = (
         set(IntentInformationMapper.determine_fields(active_intent))
         if active_intent is not None
@@ -88,9 +109,13 @@ def update_progress(
         state,
         extracted,
     )
-    starts_new_scope = _starts_new_data_scope(
-        state,
-        refining_fulfilled_intent=refining_fulfilled_intent,
+    starts_new_scope = (
+        False
+        if continues_requested_intent
+        else _starts_new_data_scope(
+            state,
+            refining_fulfilled_intent=refining_fulfilled_intent,
+        )
     )
     preserved_fields: set[InformationField] = set()
 
@@ -188,7 +213,7 @@ def update_progress(
 
     updates: StateUpdate = {
         "collected_information": information_updates,
-        "extracted_information": extracted,
+        "extracted_information": [*extracted, *confirmation_information],
         "changed_fields": list(changed_fields),
         "unknown_counter": unknown_counter,
         "termination_requested": (unknown_counter > context.max_unknown_messages),

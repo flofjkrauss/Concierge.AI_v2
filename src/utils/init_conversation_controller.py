@@ -14,6 +14,7 @@ from conversation.graph.builder import (
 from conversation.models.information.information_extrator import InformationExtractor
 from conversation.models.intent.intent_classifier import IntentClassifier
 from conversation.models.translation.m2m100_translator import M2M100Translator
+from conversation.models.translation.nllb200_distilled_translator import NLLBTranslator
 from conversation.user_interaction import UserInteraction
 from database.interface import DatabaseInterface
 from observability.log_messages import LOG_MSG
@@ -49,7 +50,7 @@ def init(database: DatabaseInterface) -> ConversationController:
     except RuntimeError:
         # PyTorch permits setting this only before inter-op work starts.
         pass
-    translator = M2M100Translator()
+    translator = NLLBTranslator()
     intent_classifier = IntentClassifier()
     information_extractor = InformationExtractor()
     user_interaction = UserInteraction()

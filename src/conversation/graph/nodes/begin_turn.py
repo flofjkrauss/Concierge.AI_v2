@@ -80,6 +80,7 @@ def begin_turn(
                 "pending_information_changes": {},
                 "next_missing_field": None,
                 "availability_requested": False,
+                "last_booking_check_in": None,
                 "validated_availability_signature": None,
                 "response": response,
                 "response_in_domain_language": response.text,

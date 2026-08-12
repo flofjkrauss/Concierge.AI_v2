@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from .context import ConversationNodeContext
 from .support import (
-    _BOOKING_REQUEST_CLEANUP_FIELDS,
     Action,
     BookingResponseObject,
     BookingStatus,
@@ -12,11 +11,13 @@ from .support import (
     DomainOperation,
     ExpectedInteraction,
     ExpectedInteractionKind,
+    Information,
     InformationField,
     Intent,
     MatchResponse,
     StateUpdate,
     _booking_availability_signature,
+    _booking_request_completion_updates,
     _fields_for_data_request,
     _information_removals,
     _is_valid_domain_result,
@@ -66,13 +67,24 @@ def execute_domain_action(
             reason=f"Domain operation {operation.value} failed",
         )
 
-        return {
+        failure_updates: StateUpdate = {
             "domain_operation": None,
             "response": response,
             "response_in_domain_language": response.text,
             "session_active": response.session_active,
             "last_intent_fulfilled": False,
         }
+        if operation == DomainOperation.CREATE_BOOKING:
+            failure_updates.update(
+                {
+                    "collected_information": {
+                        InformationField.ROOM_CATEGORY: None
+                    },
+                    "availability_requested": False,
+                    "validated_availability_signature": None,
+                }
+            )
+        return failure_updates
 
     if operation in {
         DomainOperation.PREVIEW_BOOKING,
@@ -85,6 +97,16 @@ def execute_domain_action(
             "expected_interaction": None,
             "last_intent_fulfilled": True,
         }
+        if operation == DomainOperation.CREATE_BOOKING:
+            updates.update(
+                {
+                    "collected_information": {
+                        InformationField.ROOM_CATEGORY: None
+                    },
+                    "availability_requested": bool(result.rooms),
+                    "validated_availability_signature": None,
+                }
+            )
         return updates
 
     if operation == DomainOperation.CHECK_BOOKING_AVAILABILITY:
@@ -108,6 +130,7 @@ def execute_domain_action(
                 "action": Action.DISPLAY_AVAILABILITY,
                 "expected_interaction": None,
                 "last_intent_fulfilled": True,
+                "availability_requested": False,
                 "validated_availability_signature": None,
             }
 
@@ -125,6 +148,21 @@ def execute_domain_action(
                 "last_intent_fulfilled": False,
             }
 
+        availability_signature = _booking_availability_signature(
+            state.get("collected_information", {})
+        )
+
+        if requested_field == InformationField.ROOM_CATEGORY:
+            return {
+                "domain_operation": None,
+                "domain_data": result,
+                "action": Action.DISPLAY_AVAILABILITY,
+                "expected_interaction": None,
+                "last_intent_fulfilled": False,
+                "availability_requested": True,
+                "validated_availability_signature": availability_signature,
+            }
+
         return {
             "domain_operation": None,
             "domain_data": _fields_for_data_request(
@@ -133,9 +171,7 @@ def execute_domain_action(
             ),
             "action": Action.ASK_FOR_DATA,
             "last_intent_fulfilled": False,
-            "validated_availability_signature": (
-                _booking_availability_signature(state.get("collected_information", {}))
-            ),
+            "validated_availability_signature": availability_signature,
         }
 
     if operation == DomainOperation.PREVIEW_BOOKING:
@@ -165,16 +201,30 @@ def execute_domain_action(
                 "last_intent_fulfilled": False,
             }
 
-        if (
-            isinstance(result, BookingResponseObject)
-            and result.status == BookingStatus.CANCELLED
-        ):
+        if not isinstance(result, BookingResponseObject):
+            response = _safe_error_response(
+                context.user_interaction,
+                reason="Invalid booking lookup result",
+            )
+            return {
+                "domain_operation": None,
+                "response": response,
+                "response_in_domain_language": response.text,
+                "session_active": response.session_active,
+                "last_intent_fulfilled": False,
+            }
+
+        if result.status == BookingStatus.CANCELLED:
             return {
                 "domain_operation": None,
                 "domain_data": result,
                 "action": Action.DISPLAY_BOOKING,
                 "expected_interaction": None,
                 "last_intent_fulfilled": True,
+                "last_booking_check_in": Information(
+                    InformationField.CHECK_IN,
+                    result.check_in,
+                ),
             }
 
         expected = ExpectedInteraction(
@@ -189,6 +239,10 @@ def execute_domain_action(
             "action": Action.ASK_FOR_CONFIRMATION,
             "expected_interaction": expected,
             "last_intent_fulfilled": False,
+            "last_booking_check_in": Information(
+                InformationField.CHECK_IN,
+                result.check_in,
+            ),
         }
 
     response_action = {
@@ -210,10 +264,20 @@ def execute_domain_action(
     if operation == DomainOperation.FIND_AVAILABILITY:
         updates["availability_requested"] = True
     elif operation == DomainOperation.CREATE_BOOKING:
-        updates["collected_information"] = _information_removals(
-            _BOOKING_REQUEST_CLEANUP_FIELDS
+        updates.update(
+            _booking_request_completion_updates(
+                state,
+                remember_check_in=True,
+            )
         )
-        updates["validated_availability_signature"] = None
+    elif operation in {
+        DomainOperation.GET_BOOKING,
+        DomainOperation.CANCEL_BOOKING,
+    } and isinstance(result, BookingResponseObject):
+        updates["last_booking_check_in"] = Information(
+            InformationField.CHECK_IN,
+            result.check_in,
+        )
     elif operation == DomainOperation.GET_INFORMATION:
         updates["collected_information"] = _information_removals(
             {InformationField.INFORMATION_TOPIC}

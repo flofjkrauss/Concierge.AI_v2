@@ -124,6 +124,7 @@ _SESSION_IDENTITY_FIELDS = frozenset(_BOOKING_IDENTITY_FIELDS)
 
 _PERSISTENT_INFORMATION_FIELDS = frozenset(
     {
+        InformationField.PHONE,
         InformationField.PREFERRED_LANG,
         *_SESSION_IDENTITY_FIELDS,
     }
@@ -146,7 +147,11 @@ _BOOKING_FLOW_INTENTS = frozenset(
 _BOOKING_REQUEST_CLEANUP_FIELDS = frozenset(
     set(IntentInformationMapper.determine_fields(Intent.BOOKING_REQUEST))
     - _PERSISTENT_INFORMATION_FIELDS
-    - {InformationField.CHECK_IN}
+    - {
+        InformationField.CHECK_IN,
+        InformationField.BREAKFAST,
+        InformationField.ACCESSIBLE,
+    }
 )
 
 _UNSUPPORTED_INFORMATION_RESPONSE = (
@@ -418,38 +423,26 @@ def _required_message(
     return value
 
 
-def _confirmation_decision(content: str) -> bool | None:
-    normalized = " ".join(content.casefold().strip().split()).strip(".,!?")
+def _confirmation_decision(
+    extracted: Iterable[Information],
+) -> bool | None:
+    """Read the extractor's language-neutral confirmation value."""
 
-    affirmative = {
-        "yes",
-        "yes please",
-        "confirm",
-        "confirmed",
-        "proceed",
-    }
+    confirmation = next(
+        (
+            information
+            for information in extracted
+            if information.information_field == InformationField.CONFIRMATION
+        ),
+        None,
+    )
 
-    negative = {
-        "no",
-        "no thanks",
-        "decline",
-        "stop",
-    }
-
-    if normalized in affirmative:
+    if confirmation is None:
+        return None
+    if confirmation.content == "yes":
         return True
-
-    if normalized in negative:
+    if confirmation.content == "no":
         return False
-
-    first_word = normalized.partition(" ")[0].rstrip(",:;")
-
-    if first_word in {"yes", "confirm", "confirmed"}:
-        return True
-
-    if first_word in {"no", "decline", "stop"}:
-        return False
-
     return None
 
 
@@ -949,6 +942,34 @@ def _information_removals(
     return dict.fromkeys(fields)
 
 
+def _booking_request_completion_updates(
+    state: ConversationState,
+    *,
+    remember_check_in: bool,
+) -> StateUpdate:
+    """Reset one terminal booking attempt while retaining session preferences."""
+
+    updates: StateUpdate = {
+        "collected_information": _information_removals(
+            _BOOKING_REQUEST_CLEANUP_FIELDS
+        ),
+        "availability_requested": False,
+        "validated_availability_signature": None,
+        "missing_fields": [],
+        "next_missing_field": None,
+        "pending_information_changes": {},
+    }
+
+    if remember_check_in:
+        check_in = state.get("collected_information", {}).get(
+            InformationField.CHECK_IN
+        )
+        if _is_valid_information(check_in):
+            updates["last_booking_check_in"] = check_in
+
+    return updates
+
+
 def _fields_for_data_request(
     state: ConversationState,
     requested_field: InformationField,
@@ -970,6 +991,25 @@ def _fields_for_data_request(
         return list(name_fields)
 
     return [requested_field]
+
+
+def _open_requested_fields(
+    state: ConversationState,
+) -> frozenset[InformationField]:
+    """Return fields covered by the currently open data request."""
+
+    requested_field = state.get("next_missing_field")
+    current_intent = state.get("current_intent")
+
+    if (
+        not isinstance(requested_field, InformationField)
+        or state.get("expected_interaction") is not None
+        or state.get("last_intent_fulfilled", False)
+        or current_intent not in _DATA_INTENTS
+    ):
+        return frozenset()
+
+    return frozenset(_fields_for_data_request(state, requested_field))
 
 
 def _booking_selection_information(

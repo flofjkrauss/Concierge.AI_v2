@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
+from conversation.entities.interaction_response import InformationResponse
+
 from .context import ConversationNodeContext
 from .support import (
     ConversationState,
@@ -13,6 +17,12 @@ from .support import (
     _safe_log_warning,
     replace,
 )
+
+_INFORMATION_WIRE_PATTERN = re.compile(
+    r"^\((?P<topic>[a-z][a-z0-9_]*)\)(?P<answer>.+)$",
+    flags=re.DOTALL,
+)
+_SENTENCE_BOUNDARY_PATTERN = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
 
 
 def translate_response(
@@ -35,24 +45,40 @@ def translate_response(
     if session_language == context.domain_language:
         return {}
 
-    try:
-        translated = context.translator.translate(
-            Message(content=response.text),
-            target_lang=session_language,
-            source_lang=context.domain_language,
-        )
-    except Exception as error:  # noqa: BLE001
-        _safe_log_exception("Response translation failed", error)
-        return {}
+    source_text = response.text
+    information_topic: str | None = None
+    if isinstance(response, InformationResponse):
+        information_match = _INFORMATION_WIRE_PATTERN.fullmatch(source_text)
+        if information_match is not None:
+            information_topic = information_match.group("topic")
+            source_text = information_match.group("answer")
 
-    if not _is_usable_message(translated):
-        _safe_log_warning("Translator returned an invalid response translation")
-        return {}
+    translated_parts: list[str] = []
+    for source_part in _SENTENCE_BOUNDARY_PATTERN.split(source_text):
+        try:
+            translated = context.translator.translate(
+                Message(content=source_part),
+                target_lang=session_language,
+                source_lang=context.domain_language,
+            )
+        except Exception as error:  # noqa: BLE001
+            _safe_log_exception("Response translation failed", error)
+            return {}
+
+        if not _is_usable_message(translated):
+            _safe_log_warning("Translator returned an invalid response translation")
+            return {}
+
+        translated_parts.append(translated.content)
+
+    translated_text = " ".join(translated_parts)
+    if information_topic is not None:
+        translated_text = f"({information_topic}){translated_text}"
 
     return {
         "response": replace(
             response,
-            text=translated.content,
+            text=translated_text,
         )
     }
 

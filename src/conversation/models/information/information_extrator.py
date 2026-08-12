@@ -45,17 +45,6 @@ class InformationExtractor(InformationExtractorInterface):
 
     def extract(self, message: Message) -> list[Information]:
         """Try to extract information fields from given user message."""
-        confirmation = self._extract_confirmation(message.content)
-
-        if confirmation is not None:
-            print(f"(info extractor) confirmation info extracted:{confirmation}")
-            return [
-                Information(
-                    information_field=InformationField.CONFIRMATION,
-                    content=confirmation,
-                )
-            ]
-        
         with self._inference_lock:
             response = cast(
                 CreateChatCompletionResponse,
@@ -133,36 +122,3 @@ class InformationExtractor(InformationExtractorInterface):
                 f"{field_name}={value!r} ({error})"
     )
             return None
-    
-
-    def _extract_confirmation(self, content: str) -> str | None:
-        normalized = " ".join(
-            content.casefold().strip().split()
-        ).strip(".,!?")
-
-        affirmative = {
-            "yes",
-            "yes please",
-            "sure",
-            "okay",
-            "ok",
-            "go ahead",
-            "sounds good",
-        }
-
-        negative = {
-            "no",
-            "no thanks",
-            "no thank you",
-            "never mind",
-            "decline",
-            "stop",
-        }
-
-        if normalized in affirmative:
-            return "yes"
-
-        if normalized in negative:
-            return "no"
-
-        return None

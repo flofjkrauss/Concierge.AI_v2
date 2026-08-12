@@ -10,6 +10,8 @@ from .support import (
     Intent,
     IntentInformationMapper,
     StateUpdate,
+    _is_valid_information,
+    _open_requested_fields,
 )
 
 
@@ -23,13 +25,13 @@ def activate_intent(
     )
     changed_fields = set(state.get("changed_fields", []))
 
-    requested_field = state.get("next_missing_field")
+    requested_fields = _open_requested_fields(state)
     extracted_fields = {
         information.information_field
         for information in state.get("extracted_information", [])
     }
 
-    if requested_field is not None and requested_field in extracted_fields:
+    if requested_fields & extracted_fields:
         return {
             "current_intent": current,
             "last_intent_fulfilled": False,
@@ -54,6 +56,38 @@ def activate_intent(
             "current_intent": detected,
             "last_intent_fulfilled": False,
         }
+        starts_new_intent = current != detected or state.get(
+            "last_intent_fulfilled",
+            False,
+        )
+
+        if detected == Intent.AVAILABILITY_CHECK and starts_new_intent:
+            information_updates = {
+                InformationField.ROOM_CATEGORY: None,
+            }
+            if InformationField.CHECK_IN not in extracted_fields:
+                information_updates[InformationField.CHECK_IN] = None
+            intent_updates.update(
+                {
+                    "collected_information": information_updates,
+                    "availability_requested": False,
+                    "validated_availability_signature": None,
+                }
+            )
+
+        if detected in {
+            Intent.BOOKING_CHECK,
+            Intent.BOOKING_CANCELLATION,
+        } and starts_new_intent:
+            last_booking_check_in = state.get("last_booking_check_in")
+            if (
+                InformationField.CHECK_IN not in extracted_fields
+                and _is_valid_information(last_booking_check_in)
+            ):
+                intent_updates["collected_information"] = {
+                    InformationField.CHECK_IN: last_booking_check_in
+                }
+
         if detected == Intent.BOOKING_REQUEST and (
             current != Intent.BOOKING_REQUEST
             or state.get("last_intent_fulfilled", False)

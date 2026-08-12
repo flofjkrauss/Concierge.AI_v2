@@ -266,14 +266,16 @@ def test_update_progress_does_not_count_recognized_confirmation() -> None:
     assert result["unknown_counter"] == 0
 
 
-def test_resolve_confirmation_accepts_normalized_affirmative_reply() -> None:
+def test_resolve_confirmation_accepts_extracted_affirmative_reply() -> None:
     nodes, *_ = make_nodes()
     expected = expected_confirmation()
 
     result = nodes.resolve_confirmation(
         graph_state(
             expected_interaction=expected,
-            extracted_information=[],
+            extracted_information=[
+                Information(InformationField.CONFIRMATION, "yes")
+            ],
             translated_message=Message("  YES!  "),
         )
     )
@@ -289,13 +291,15 @@ def test_resolve_confirmation_handles_decline() -> None:
     result = nodes.resolve_confirmation(
         graph_state(
             expected_interaction=expected_confirmation(),
-            extracted_information=[],
+            extracted_information=[
+                Information(InformationField.CONFIRMATION, "no")
+            ],
             translated_message=Message("No thanks"),
         )
     )
 
     assert result["confirmation_outcome"] is ConfirmationOutcome.DECLINED
-    assert result["action"] is Action.ASK_INTENT
+    assert result["action"] is Action.CONFIRMATION_DECLINED
     assert result["last_intent_fulfilled"] is True
 
 

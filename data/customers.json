@@ -118,6 +118,24 @@
       "phone": "0",
       "preferred_language": "en",
       "created_at": "2026-08-12T09:16:42.858107+00:00"
+    },
+    {
+      "customer_id": "08224b2b-4b17-4d48-bb2b-7b0343089184",
+      "first_name": "max",
+      "last_name": "meier",
+      "email": "max.meier56@gmx.de",
+      "phone": "0",
+      "preferred_language": "de",
+      "created_at": "2026-08-12T12:49:53.555601+00:00"
+    },
+    {
+      "customer_id": "50adebf7-19bc-4b4b-b898-128cf24201a1",
+      "first_name": "Max",
+      "last_name": "Meier",
+      "email": "max.meier@gmx.de",
+      "phone": "0",
+      "preferred_language": "de",
+      "created_at": "2026-08-12T14:24:32.516420+00:00"
     }
   ]
 }

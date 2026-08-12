@@ -95,6 +95,7 @@ class ConversationState(TypedDict):
     expected_interaction: ExpectedInteraction | None
     pending_information_changes: dict[InformationField, Information]
     availability_requested: bool
+    last_booking_check_in: Information | None
     validated_availability_signature: (
         tuple[str, str, int | None, bool | None, str | None] | None
     )

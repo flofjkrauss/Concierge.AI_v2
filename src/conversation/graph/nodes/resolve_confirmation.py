@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from .context import ConversationNodeContext
 from .support import (
-    _BOOKING_REQUEST_CLEANUP_FIELDS,
     Action,
     ConfirmationOutcome,
     ConversationState,
@@ -12,11 +11,10 @@ from .support import (
     Intent,
     IntentInformationMapper,
     StateUpdate,
+    _booking_request_completion_updates,
     _confirmation_decision,
     _information_change_data,
-    _information_removals,
     _plausible_information,
-    _required_message,
 )
 
 
@@ -30,8 +28,9 @@ def resolve_confirmation(
     if expected is None:
         raise ValueError("No confirmation is pending")
 
-    message = _required_message(state, "translated_message")
-    decision = _confirmation_decision(message.content)
+    decision = _confirmation_decision(
+        state.get("extracted_information", [])
+    )
 
     if expected.kind == ExpectedInteractionKind.INFORMATION_CHANGE_CONFIRMATION:
         pending_changes = dict(state.get("pending_information_changes", {}))
@@ -150,10 +149,12 @@ def resolve_confirmation(
         }
 
         if expected.intent == Intent.BOOKING_REQUEST:
-            operation_decline_updates["collected_information"] = _information_removals(
-                _BOOKING_REQUEST_CLEANUP_FIELDS
+            operation_decline_updates.update(
+                _booking_request_completion_updates(
+                    state,
+                    remember_check_in=False,
+                )
             )
-            operation_decline_updates["validated_availability_signature"] = None
 
         return operation_decline_updates
 

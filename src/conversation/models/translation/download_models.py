@@ -7,6 +7,8 @@ from urllib.request import urlopen
 from huggingface_hub import hf_hub_download
 
 _MODEL_DATA_DIR = Path(__file__).resolve().parent / "model_data"
+#block for m2m100_418
+"""
 _TRANSLATION_MODEL_DIR = _MODEL_DATA_DIR / "m2m100_418M"
 _TRANSLATION_REPOSITORY = "facebook/m2m100_418M"
 _TRANSLATION_FILES = (
@@ -17,6 +19,21 @@ _TRANSLATION_FILES = (
     "special_tokens_map.json",
     "tokenizer_config.json",
     "vocab.json",
+)
+"""
+
+#nllb-200-distilled-600M
+_TRANSLATION_MODEL_DIR = _MODEL_DATA_DIR / "nllb-200-distilled-600M"
+_TRANSLATION_REPOSITORY = "facebook/nllb-200-distilled-600M"
+
+_TRANSLATION_FILES = (
+    "config.json",
+    "generation_config.json",
+    "pytorch_model.bin",
+    "sentencepiece.bpe.model",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
 )
 _LANGUAGE_MODEL_URL = (
     "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"

@@ -61,7 +61,8 @@ class ApplicationSettings(Settings):
     #translation
     conversation_path: Path = project_root / "src" / "conversation"
     translation_model_data_folder: Path = conversation_path / "models" / "translation" / "model_data"
-    translation_model: Path = translation_model_data_folder / "m2m100_418M"
+    #translation_model: Path = translation_model_data_folder / "m2m100_418M"
+    translation_model: Path = translation_model_data_folder / "nllb-200-distilled-600M"
     language_detector: Path = translation_model_data_folder / "lid.176.bin"
     # fallback if cuda is not available, check logs to see that
     #translation_processing_unit = "cpu"

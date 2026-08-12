@@ -7,6 +7,7 @@ from .support import (
     Action,
     ConversationState,
     DomainOperation,
+    InformationField,
     Intent,
     StateUpdate,
     _booking_availability_signature,
@@ -37,7 +38,11 @@ def determine_action(
         if (
             current_intent == Intent.BOOKING_REQUEST
             and availability_signature is not None
-            and availability_signature != state.get("validated_availability_signature")
+            and (
+                requested_field == InformationField.ROOM_CATEGORY
+                or availability_signature
+                != state.get("validated_availability_signature")
+            )
         ):
             return {
                 "domain_operation": (DomainOperation.CHECK_BOOKING_AVAILABILITY),
