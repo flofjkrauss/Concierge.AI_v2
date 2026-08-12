@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Literal, cast
 from uuid import uuid4
 
 from client.components.api import ConversationResponse
+from conversation.value_object.booking_selection import BookingSelection
+from domain.value_objects.room_category import RoomCategory
 
 type ChatRole = Literal["assistant", "user"]
 
@@ -34,6 +37,62 @@ class Shortcut:
     visible_text: str
     api_text: str
     source_message_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AvailabilitySelectionData:
+    """Immutable search criteria belonging to one availability response."""
+
+    check_in: str
+    check_out: str
+    guest_count: int
+    accessible: bool
+
+    @classmethod
+    def from_mapping(
+        cls,
+        data: dict[str, object],
+    ) -> AvailabilitySelectionData | None:
+        """Validate criteria before exposing a booking shortcut."""
+
+        check_in = _string_field(data, "check_in")
+        check_out = _string_field(data, "check_out")
+        guest_count = _integer_field(data, "guest_count")
+        accessible = _boolean_field(data, "accessible")
+        if (
+            check_in is None
+            or check_out is None
+            or guest_count is None
+            or guest_count < 1
+            or accessible is None
+        ):
+            return None
+
+        try:
+            check_in_date = date.fromisoformat(check_in)
+            check_out_date = date.fromisoformat(check_out)
+        except ValueError:
+            return None
+        if check_out_date <= check_in_date:
+            return None
+
+        return cls(
+            check_in=check_in,
+            check_out=check_out,
+            guest_count=guest_count,
+            accessible=accessible,
+        )
+
+    def booking_message(self, room_category: str) -> str:
+        """Build the deterministic booking action for one room category."""
+
+        return BookingSelection(
+            check_in=date.fromisoformat(self.check_in),
+            check_out=date.fromisoformat(self.check_out),
+            guest_count=self.guest_count,
+            accessible=self.accessible,
+            room_category=RoomCategory(room_category),
+        ).to_wire()
 
 
 @dataclass(frozen=True, slots=True)

@@ -3,7 +3,8 @@
 from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.room_category import RoomCategory
 
-def get_system_prompt():
+
+def get_system_prompt() -> str:
     return f"""
     You are a strict information extractor for a hotel chatbot.
 

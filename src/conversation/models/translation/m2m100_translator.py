@@ -1,7 +1,7 @@
 """Local M2M100 translation with fastText language identification."""
 
+from collections import OrderedDict
 from dataclasses import replace
-from pathlib import Path
 from threading import Lock
 from typing import Any
 
@@ -9,15 +9,18 @@ import fasttext  # type: ignore[import-untyped]
 import torch
 from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 
+from configuration.application import ApplicationSettings
 from conversation.entities.message import Message
 from conversation.models.translation.interface import TranslatorInterface
-
-from configuration.application import ApplicationSettings
 from observability.log_messages import LOG_MSG
 
-_TRANSLATION_MODEL_DIR = ApplicationSettings.get_settings().translation_model
-_LANGUAGE_MODEL_PATH = ApplicationSettings.get_settings().language_detector
-_PROCESSING_UNIT  = ApplicationSettings.get_settings().translation_processing_unit
+_SETTINGS = ApplicationSettings.get_settings()
+_TRANSLATION_MODEL_DIR = _SETTINGS.translation_model
+_LANGUAGE_MODEL_PATH = _SETTINGS.language_detector
+_PROCESSING_UNIT = _SETTINGS.translation_processing_unit
+_MAX_NEW_TOKENS = _SETTINGS.translation_max_new_tokens
+_NUM_BEAMS = _SETTINGS.translation_num_beams
+_TRANSLATION_CACHE_SIZE = _SETTINGS.translation_cache_size
 
 
 class UnsupportedLanguageError(ValueError):
@@ -50,6 +53,7 @@ class M2M100Translator(TranslatorInterface):
         self._model.eval()
         self._language_detector = fasttext.load_model(str(_LANGUAGE_MODEL_PATH))
         self._inference_lock = Lock()
+        self._cache: OrderedDict[tuple[str, str, str], str] = OrderedDict()
         print(f"{type(self).__name__} loaded")
 
     def translate(self, text: Message, target_lang: str, source_lang: str) -> Message:
@@ -57,29 +61,54 @@ class M2M100Translator(TranslatorInterface):
 
         normalized_target = self._require_supported_language(target_lang)
         normalized_source_lang = self._require_supported_language(source_lang)
+        translated_content = self._translate_content(
+            text.content,
+            normalized_target,
+            normalized_source_lang,
+        )
 
+        return replace(text, content=translated_content)
+
+    def _translate_content(
+        self,
+        content: str,
+        target_lang: str,
+        source_lang: str,
+    ) -> str:
+        cache_key = (content, target_lang, source_lang)
         with self._inference_lock, torch.inference_mode():
-            self._tokenizer.src_lang = normalized_source_lang
-            #model_inputs = self._tokenizer(text.content, return_tensors="pt")
+            if cache_key in self._cache:
+                self._cache.move_to_end(cache_key)
+                return self._cache[cache_key]
+
+            self._tokenizer.src_lang = source_lang
             model_inputs = {
                 key: value.to(_PROCESSING_UNIT)
                 for key, value in self._tokenizer(
-                    text.content,
+                    content,
                     return_tensors="pt",
                 ).items()
             }
             generated_tokens = self._model.generate(
                 **model_inputs,
-                forced_bos_token_id=self._tokenizer.get_lang_id(normalized_target),
-                max_new_tokens=256,
+                forced_bos_token_id=self._tokenizer.get_lang_id(target_lang),
+                max_new_tokens=_MAX_NEW_TOKENS,
+                num_beams=_NUM_BEAMS,
                 do_sample=False,
+                early_stopping=False,
+                use_cache=True,
             )
-            translated_content = self._tokenizer.batch_decode(
+            decoded = self._tokenizer.batch_decode(
                 generated_tokens,
                 skip_special_tokens=True,
-            )[0]
-
-        return replace(text, content=translated_content)
+            )
+            translated = decoded[0]
+            if not isinstance(translated, str):
+                raise TypeError("Translator returned non-textual content")
+            self._cache[cache_key] = translated
+            if len(self._cache) > _TRANSLATION_CACHE_SIZE:
+                self._cache.popitem(last=False)
+            return translated
 
     def determine(self, text: Message) -> str:
         """Return the fastText language code for ``text.content``."""
@@ -94,6 +123,13 @@ class M2M100Translator(TranslatorInterface):
         if not label.startswith(prefix):
             raise RuntimeError(f"Unexpected fastText language label: {label!r}")
         return label.removeprefix(prefix)
+
+    def warm_up(self) -> None:
+        """Warm language detection and one CPU translation pass."""
+
+        message = Message(content="Guten Morgen.")
+        self.determine(message)
+        self._translate_content(message.content, "en", "de")
 
     def _require_supported_language(self, language: str) -> str:
         normalized = language.strip().lower()

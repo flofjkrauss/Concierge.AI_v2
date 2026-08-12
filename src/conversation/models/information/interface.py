@@ -1,6 +1,7 @@
 """extract informations from user messages"""
-from datetime import date
+
 from abc import ABC, abstractmethod
+from datetime import date
 
 from conversation.entities.information import Information
 from conversation.entities.message import Message

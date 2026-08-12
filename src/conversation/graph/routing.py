@@ -3,9 +3,10 @@
 from typing import Literal
 
 from conversation.graph.state import ConfirmationOutcome, ConversationState
+from conversation.value_object.action import Action
 
 AfterBeginRoute = Literal["process", "finish"]
-AfterAnalysisRoute = Literal["terminate", "confirmation", "intent"]
+AfterAnalysisRoute = Literal["terminate", "confirmation", "intent", "response"]
 AfterConfirmationRoute = Literal["execute", "fields", "intent", "response"]
 AfterIntentRoute = Literal["fields", "response"]
 AfterActionRoute = Literal["execute", "response"]
@@ -24,7 +25,14 @@ def route_after_analysis(state: ConversationState) -> AfterAnalysisRoute:
 
     if state.get("termination_requested", False):
         return "terminate"
+    if state.get("action") in {
+        Action.REPORT_INVALID_DATE,
+        Action.DISPLAY_INFO,
+    }:
+        return "response"
     if state.get("expected_interaction") is not None:
+        if state.get("action") == Action.ASK_FOR_INFORMATION_CHANGE:
+            return "response"
         return "confirmation"
     return "intent"
 
@@ -36,6 +44,11 @@ def route_after_confirmation(state: ConversationState) -> AfterConfirmationRoute
         case ConfirmationOutcome.CONFIRMED:
             return "execute"
         case ConfirmationOutcome.CHANGED:
+            return "fields"
+        case (
+            ConfirmationOutcome.INFORMATION_CHANGE_CONFIRMED
+            | ConfirmationOutcome.INFORMATION_CHANGE_DECLINED
+        ):
             return "fields"
         case ConfirmationOutcome.INTERRUPTED:
             return "intent"

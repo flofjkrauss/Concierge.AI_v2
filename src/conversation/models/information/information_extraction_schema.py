@@ -1,8 +1,11 @@
 """Schema and field map for information extraction"""
 
 from conversation.value_object.information_fields import InformationField
+from domain.value_objects.information_topic import InformationTopic
+from domain.value_objects.room_category import RoomCategory
 
-def get_information_extraction_schema():
+
+def get_information_extraction_schema() -> dict[str, object]:
     return {
         "type": "object",
         "properties": {
@@ -21,8 +24,14 @@ def get_information_extraction_schema():
             "guest_count": {"type": "integer"},
             "breakfast": {"type": "boolean"},
             "accessible": {"type": "boolean"},
-            "information_topic": {"type": "string"},
-            "room_category": {"type": "string"},
+            "information_topic": {
+                "type": "string",
+                "enum": [topic.value for topic in InformationTopic],
+            },
+            "room_category": {
+                "type": "string",
+                "enum": [category.value for category in RoomCategory],
+            },
             "confirmation": {
                 "type": "string",
                 "enum": ["yes", "no"],
@@ -31,7 +40,8 @@ def get_information_extraction_schema():
         "additionalProperties": False,
     }
 
-def get_field_map():
+
+def get_field_map() -> dict[str, InformationField]:
     return {
         "first_name": InformationField.FIRST_NAME,
         "last_name": InformationField.LAST_NAME,

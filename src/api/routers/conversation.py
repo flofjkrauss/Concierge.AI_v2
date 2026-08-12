@@ -38,6 +38,20 @@ def terminate(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/{session_id}/patience", response_model=None)
+def patience(
+    session_id: str,
+    message: str,
+    controller: Annotated[
+        ConversationController,
+        Depends(get_conversation_controller),
+    ],
+) -> InteractionResponse:
+    """Return a localized progress message without cancelling the active turn."""
+
+    return controller.patience_response(session_id=session_id, message=message)
+
+
 @router.post("/{session_id}", response_model=None)
 def receive_message(
     session_id: str,

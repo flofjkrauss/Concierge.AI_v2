@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError
 from pathlib import Path
 from typing import cast
 
@@ -21,11 +22,17 @@ from client.components.lifecycle import (
 )
 from client.components.models import ChatEntry, ChatRole
 from client.components.views import apply_theme, render_header, render_transcript
+from configuration.application import ApplicationSettings
 
 APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 INACTIVITY_TIMEOUT_SECONDS = 10 * 60
 INACTIVITY_CHECK_SECONDS = 15.0
+PATIENCE_INTERVAL_SECONDS = max(
+    0.5,
+    ApplicationSettings.get_settings().conversation_patience_interval_seconds,
+)
+PENDING_TURN_CHECK_SECONDS = min(1.0, PATIENCE_INTERVAL_SECONDS / 4)
 
 MESSAGES_KEY = "harbour_light_messages"
 SESSION_ID_KEY = "harbour_light_session_id"
@@ -34,6 +41,10 @@ LAST_ACTIVITY_KEY = "harbour_light_last_activity"
 CONSUMED_ACTIONS_KEY = "harbour_light_consumed_actions"
 INITIALIZED_KEY = "harbour_light_initialized"
 LAST_SCROLLED_MESSAGE_KEY = "harbour_light_last_scrolled_message"
+PENDING_TURN_KEY = "harbour_light_pending_turn"
+PENDING_TURN_STARTED_KEY = "harbour_light_pending_turn_started"
+PENDING_TURN_MESSAGE_KEY = "harbour_light_pending_turn_message"
+PATIENCE_SHOWN_KEY = "harbour_light_patience_shown"
 
 SERVICE_UNAVAILABLE = (
     "The concierge service is unavailable right now. Please try a new chat in a moment."
@@ -46,9 +57,16 @@ SESSION_EXPIRED = (
     "This chat closed after 10 minutes of inactivity. Start a new chat "
     "whenever you're ready."
 )
-GENERIC_BACKEND_ERROR = (
-    "I couldn't complete that request. Please start a new chat and try again."
-)
+
+
+@st.cache_resource(show_spinner=False)
+def _turn_executor() -> ThreadPoolExecutor:
+    """Keep background workers stable across Streamlit script reruns."""
+
+    return ThreadPoolExecutor(
+        max_workers=4,
+        thread_name_prefix="concierge-client-turn",
+    )
 
 
 def _initialize_local_state() -> None:
@@ -60,6 +78,10 @@ def _initialize_local_state() -> None:
         CONSUMED_ACTIONS_KEY: set(),
         INITIALIZED_KEY: False,
         LAST_SCROLLED_MESSAGE_KEY: None,
+        PENDING_TURN_KEY: None,
+        PENDING_TURN_STARTED_KEY: None,
+        PENDING_TURN_MESSAGE_KEY: None,
+        PATIENCE_SHOWN_KEY: False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -72,6 +94,15 @@ def _messages() -> list[ChatEntry]:
 
 def _consumed_actions() -> set[str]:
     return cast(set[str], st.session_state[CONSUMED_ACTIONS_KEY])
+
+
+def _input_focus_request_id() -> str:
+    """Return the latest assistant message that should restore input focus."""
+
+    for message in reversed(_messages()):
+        if message.role == "assistant":
+            return message.message_id
+    return "initial-load"
 
 
 def _session_id() -> str | None:
@@ -91,8 +122,6 @@ def _append_message(
 
 
 def _guest_text(response: ConversationResponse) -> str:
-    if response.kind is ResponseKind.ERROR:
-        return GENERIC_BACKEND_ERROR
     return response.text
 
 
@@ -163,6 +192,9 @@ def _submit_turn(
     api_text: str,
     source_message_id: str | None = None,
 ) -> None:
+    if _has_pending_turn():
+        return
+
     session_id = _ensure_remote_session(api)
     if api is None or session_id is None:
         return
@@ -175,14 +207,85 @@ def _submit_turn(
     _append_message("user", visible_text)
     st.session_state[LAST_ACTIVITY_KEY] = time.monotonic()
 
+    future = _turn_executor().submit(api.send_message, session_id, api_text)
+    st.session_state[PENDING_TURN_KEY] = future
+    st.session_state[PENDING_TURN_STARTED_KEY] = time.monotonic()
+    st.session_state[PENDING_TURN_MESSAGE_KEY] = api_text
+    st.session_state[PATIENCE_SHOWN_KEY] = False
+
     try:
-        with st.spinner("One moment — I'm checking that for you."):
-            response = api.send_message(session_id, api_text)
-    except ConversationApiError:
-        _append_message("assistant", TURN_FAILED)
+        # Preserve immediate responses without making normal model turns blocking.
+        future.result(timeout=0.01)
+    except TimeoutError:
+        return
+    except Exception:  # noqa: BLE001
+        _complete_pending_turn(future)
         return
 
-    _apply_response(response)
+    _complete_pending_turn(future)
+
+
+def _has_pending_turn() -> bool:
+    return isinstance(st.session_state.get(PENDING_TURN_KEY), Future)
+
+
+def _clear_pending_turn() -> None:
+    st.session_state[PENDING_TURN_KEY] = None
+    st.session_state[PENDING_TURN_STARTED_KEY] = None
+    st.session_state[PENDING_TURN_MESSAGE_KEY] = None
+    st.session_state[PATIENCE_SHOWN_KEY] = False
+
+
+def _complete_pending_turn(
+    future: Future[ConversationResponse],
+) -> None:
+    """Consume one completed background request without leaking exceptions."""
+
+    try:
+        response = future.result()
+        if not isinstance(response, ConversationResponse):
+            raise ConversationApiError("Invalid conversation response")
+    except Exception:  # noqa: BLE001
+        _append_message("assistant", TURN_FAILED)
+    else:
+        _apply_response(response)
+    finally:
+        _clear_pending_turn()
+
+
+def _poll_pending_turn(api: ConversationApi | None) -> bool:
+    """Update the transcript when a background turn progresses or completes."""
+
+    future = st.session_state.get(PENDING_TURN_KEY)
+    if not isinstance(future, Future):
+        return False
+
+    if future.done():
+        _complete_pending_turn(cast(Future[ConversationResponse], future))
+        return True
+
+    started = st.session_state.get(PENDING_TURN_STARTED_KEY)
+    if (
+        api is None
+        or not isinstance(started, float)
+        or cast(bool, st.session_state.get(PATIENCE_SHOWN_KEY, False))
+        or time.monotonic() - started < PATIENCE_INTERVAL_SECONDS
+    ):
+        return False
+
+    session_id = _session_id()
+    pending_message = st.session_state.get(PENDING_TURN_MESSAGE_KEY)
+    if session_id is None or not isinstance(pending_message, str):
+        return False
+
+    try:
+        progress = api.patience_message(session_id, pending_message)
+    except ConversationApiError:
+        return False
+
+    _append_message("assistant", progress.text, progress)
+    st.session_state[PATIENCE_SHOWN_KEY] = True
+    return True
 
 
 def _expire_inactive_session(api: ConversationApi | None) -> None:
@@ -245,7 +348,7 @@ def main() -> None:
 
     @st.fragment(run_every=INACTIVITY_CHECK_SECONDS)
     def inactivity_watchdog() -> None:
-        if not _is_session_active():
+        if not _is_session_active() or _has_pending_turn():
             return
         last_activity = cast(float, st.session_state[LAST_ACTIVITY_KEY])
         if time.monotonic() - last_activity >= INACTIVITY_TIMEOUT_SECONDS:
@@ -253,6 +356,13 @@ def main() -> None:
             st.rerun()
 
     inactivity_watchdog()
+
+    @st.fragment(run_every=PENDING_TURN_CHECK_SECONDS)
+    def pending_turn_watchdog() -> None:
+        if _poll_pending_turn(api):
+            st.rerun()
+
+    pending_turn_watchdog()
 
     session_id = _session_id()
     if api is not None and session_id is not None and _is_session_active():
@@ -277,12 +387,12 @@ def main() -> None:
         "Ask your concierge…",
         key="harbour_light_guest_input",
         max_chars=250,
-        disabled=api is None,
+        disabled=api is None or _has_pending_turn(),
         on_submit=_submit_chat_input,
         args=(api,),
     )
     _request_scroll_to_latest_message()
-    focus_chat_input_on_load()
+    focus_chat_input_on_load(_input_focus_request_id())
 
 
 if __name__ == "__main__":

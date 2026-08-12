@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import cast
@@ -92,6 +91,15 @@ class ConversationResponse:
             if isinstance(room, dict)
         ]
 
+    def availability_request(self) -> dict[str, object] | None:
+        """Return the criteria attached to one availability result."""
+
+        content = self.payload.get("content")
+        if not isinstance(content, dict):
+            return None
+        request = content.get("request")
+        return cast(dict[str, object], request) if isinstance(request, dict) else None
+
     def structured_data(self, field: str) -> dict[str, object] | None:
         """Return one mapping-valued response field."""
 
@@ -105,6 +113,9 @@ class ConversationApi:
 
     base_url: str
     timeout_seconds: float = 30.0
+    turn_timeout_seconds: float | None = (
+        ApplicationSettings.get_settings().conversation_request_timeout_seconds
+    )
 
     def __post_init__(self) -> None:
         normalized = self.base_url.rstrip("/")
@@ -132,7 +143,10 @@ class ConversationApi:
     def initialize(self) -> ConversationResponse:
         """Start a new conversation session."""
 
-        payload = self._post(f"{self.base_url}/")
+        payload = self._post(
+            f"{self.base_url}/",
+            timeout_seconds=self.timeout_seconds,
+        )
         return ConversationResponse.from_payload(payload)
 
     def send_message(self, session_id: str, message: str) -> ConversationResponse:
@@ -141,13 +155,32 @@ class ConversationApi:
         payload = self._post(
             f"{self.base_url}/{quote(session_id, safe='')}",
             params={"message": message},
+            timeout_seconds=self.turn_timeout_seconds,
+        )
+        return ConversationResponse.from_payload(payload)
+
+    def patience_message(
+        self,
+        session_id: str,
+        message: str,
+    ) -> ConversationResponse:
+        """Request a localized progress message for one in-flight turn."""
+
+        payload = self._post(
+            f"{self.base_url}/{quote(session_id, safe='')}/patience",
+            params={"message": message},
+            timeout_seconds=self.timeout_seconds,
         )
         return ConversationResponse.from_payload(payload)
 
     def terminate(self, session_id: str) -> None:
         """Terminate an existing conversation; the operation is idempotent."""
 
-        self._post(self.termination_url(session_id), expect_json=False)
+        self._post(
+            self.termination_url(session_id),
+            expect_json=False,
+            timeout_seconds=self.timeout_seconds,
+        )
 
     def termination_url(self, session_id: str) -> str:
         """Return the conversation-scoped URL used by unload delivery."""
@@ -160,12 +193,13 @@ class ConversationApi:
         *,
         params: dict[str, str] | None = None,
         expect_json: bool = True,
+        timeout_seconds: float | None,
     ) -> dict[str, object]:
         try:
             response = httpx.post(
                 url,
                 params=params,
-                timeout=self.timeout_seconds,
+                timeout=timeout_seconds,
             )
             response.raise_for_status()
             if not expect_json:

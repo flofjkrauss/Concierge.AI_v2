@@ -1,5 +1,9 @@
 """Handle user communication."""
 
+from collections.abc import Mapping, Sequence
+from datetime import date
+
+from api.schemas.availability_schema import AvailabilityRequestResponse
 from api.schemas.availability_schema import (
     AvailabilityResponse as ApiAvailabilityResponse,
 )
@@ -17,7 +21,9 @@ from conversation.entities.interaction_response import (
 from conversation.entities.message import Message
 from conversation.value_object.action import Action
 from conversation.value_object.default_phrases import DefaultPhrases, build
+from conversation.value_object.information_fields import InformationField
 from conversation.value_object.intent import Intent
+from domain.entities.booking_request import BookingRequest
 from domain.entities.room import Room
 from observability.log_messages import LOG_MSG
 from observability.utils.to_json import to_jsonable
@@ -69,6 +75,8 @@ class UserInteraction:
         methods = {
             Action.ASK_FOR_DATA: self.ask_for_data,
             Action.ASK_FOR_CONFIRMATION: self.ask_for_confirmation,
+            Action.ASK_FOR_INFORMATION_CHANGE: self.ask_for_information_change,
+            Action.REPORT_INVALID_DATE: self.report_invalid_date,
             Action.DISPLAY_AVAILABILITY: self.display_availability,
             Action.DISPLAY_BOOKING: self.display_booking,
             Action.DISPLAY_GREETING: self.display_greeting,
@@ -139,6 +147,91 @@ class UserInteraction:
             data=data,
         )
 
+    def ask_for_information_change(
+        self,
+        intent: Intent,
+        data: object,
+    ) -> InteractionResponse:
+        """Ask once for confirmation of one or more replacement values."""
+
+        if not isinstance(data, Mapping) or not data:
+            raise TypeError(
+                "Information-change confirmation requires replacement values"
+            )
+
+        replacements: list[str] = []
+
+        for field, values in data.items():
+            try:
+                normalized_field = (
+                    field
+                    if isinstance(field, InformationField)
+                    else InformationField(field)
+                )
+            except (TypeError, ValueError):
+                raise TypeError(
+                    "Invalid information-change confirmation data"
+                ) from None
+
+            if (
+                not isinstance(values, Sequence)
+                or isinstance(values, (str, bytes))
+                or len(values) != 2
+            ):
+                raise TypeError(
+                    "Invalid information-change confirmation data"
+                )
+
+            old_value, new_value = values
+            label = normalized_field.value.replace("_", " ")
+            replacements.append(
+                f"{label}: {_display_value(old_value)} to "
+                f"{_display_value(new_value)}"
+            )
+
+        if len(replacements) == 1:
+            text = (
+                "Should the existing value be replaced? "
+                f"{replacements[0]}."
+            )
+        else:
+            text = (
+                "Should these existing values be replaced? "
+                f"{'; '.join(replacements)}."
+            )
+
+        return InteractionResponse(
+            session_active=True,
+            text=text,
+        )
+
+    def report_invalid_date(
+        self,
+        intent: Intent,
+        data: object,
+    ) -> InteractionResponse:
+        """Tell the user that a requested date field cannot use the value."""
+
+        if data == InformationField.CHECK_OUT:
+            text = (
+                "The specified date cannot be used as the check-out date. "
+                "Please provide a check-out date after the check-in date "
+                "and not in the past."
+            )
+        elif data == InformationField.CHECK_IN:
+            text = (
+                "The specified date cannot be used as the check-in date. "
+                "Please provide a check-in date that is not in the past "
+                "and before the check-out date."
+            )
+        else:
+            raise TypeError("Invalid-date response requires a date field")
+
+        return InteractionResponse(
+            session_active=True,
+            text=text,
+        )
+
     def display_info(
         self,
         intent: Intent,
@@ -153,7 +246,7 @@ class UserInteraction:
             )
             LOG_MSG.error(
                 err,
-                extra=to_jsonable(data),
+                extra=to_jsonable({"data": data}),
             )
             raise TypeError(err)
 
@@ -176,11 +269,13 @@ class UserInteraction:
             )
             LOG_MSG.error(
                 err,
-                extra=to_jsonable(data),
+                extra=to_jsonable({"data": data}),
             )
             raise TypeError(err)
 
-        content = ApiAvailabilityResponse()
+        content = ApiAvailabilityResponse(
+            request=_availability_request_response(getattr(data, "request", None))
+        )
 
         rooms = data.rooms
 
@@ -199,7 +294,7 @@ class UserInteraction:
                 )
                 LOG_MSG.error(
                     err,
-                    extra=to_jsonable(data),
+                    extra=to_jsonable({"data": data}),
                 )
                 raise TypeError(err)
 
@@ -274,3 +369,25 @@ class UserInteraction:
             session_active=True,
             text=text
         )
+
+
+def _display_value(value: object) -> str:
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
+
+
+def _availability_request_response(
+    request: object,
+) -> AvailabilityRequestResponse | None:
+    if not isinstance(request, BookingRequest):
+        return None
+
+    return AvailabilityRequestResponse(
+        check_in=request.stay_period.check_in,
+        check_out=request.stay_period.check_out,
+        guest_count=request.guest_count,
+        accessible=request.accessible_requested,
+    )

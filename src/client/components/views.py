@@ -11,6 +11,7 @@ import streamlit as st
 
 from client.components.api import ConversationResponse, ResponseKind
 from client.components.models import (
+    AvailabilitySelectionData,
     BookingCardData,
     ChatEntry,
     InformationCardData,
@@ -159,10 +160,13 @@ def render_transcript(
             if response is None:
                 continue
 
-            actionable = (
+            unconsumed = (
                 session_active
-                and entry.message_id == latest_message_id
                 and entry.message_id not in consumed_actions
+            )
+            actionable = unconsumed and (
+                response.kind is ResponseKind.AVAILABILITY
+                or entry.message_id == latest_message_id
             )
             action = _render_structured_response(
                 response,
@@ -236,6 +240,13 @@ def _render_room_cards(
     if not rooms:
         return None
 
+    raw_request = response.availability_request()
+    request = (
+        AvailabilitySelectionData.from_mapping(raw_request)
+        if raw_request is not None
+        else None
+    )
+
     selected: Shortcut | None = None
     with st.container(key=f"room_grid_{message_id}"):
         columns = st.columns(len(rooms), gap="small")
@@ -273,12 +284,14 @@ def _render_room_cards(
                     f"Select {label}",
                     key=f"select_{message_id}_{category}",
                     type="primary",
-                    disabled=not actionable,
+                    disabled=not actionable or request is None,
                     width="stretch",
                 ):
+                    if request is None:
+                        continue
                     selected = Shortcut(
                         visible_text=f"Select {label}",
-                        api_text=f"I would like to book the {label}.",
+                        api_text=request.booking_message(category),
                         source_message_id=message_id,
                     )
     return selected

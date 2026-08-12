@@ -12,7 +12,10 @@ from observability.utils.to_json import to_jsonable
 class DefaultPhrases(StrEnum):
     GREETING = "Welcome! How can I help you?"
     ASK_INTENT = "Unfortunately, I was not able to understand you. Please try again."
-    ERROR_MESSAGE = "Something went terribly wrong!"
+    ERROR_MESSAGE = (
+        "I couldn't complete that request. Your chat is still open, "
+        "so please try again."
+    )
     AVAILABLE_ROOM_CATEGORIES = "According to your request, these room categories are available...."
     NO_VACANCY = "Unfortunately, we have no vacancy in the requested stay period."
     AVAILABILITY_ASK_FOR_DATA = "To offer possible booking options, I need to collect additional data. Please tell me:"
@@ -23,6 +26,9 @@ class DefaultPhrases(StrEnum):
     ASK_NUMBER_GUESTS = "How many people are you?"
     BOOKING_ASK_FOR_DATA = "To complete your booking, I still need some information."
     CANCELLATION_ASK_FOR_DATA = "To complete your cancellation, I still need some information."
+    ASK_GUEST_DETAILS = (
+        "Please tell me your first and last name and your email address."
+    )
     ASK_FIRST_AND_LAST_NAME = "Please tell me your full name."
     ASK_FIRST_NAME = "Please tell me your first name."
     ASK_LAST_NAME = "Please tell me your family name."
@@ -100,22 +106,6 @@ def build_confirmation_declined(intent: Intent, missing_fields: list[Information
                 extra=to_jsonable({"intent": intent}),
             )
             return DefaultPhrases.GENERIC_ASK_FOR_CONFIRMATION
-
-def build_ask_data_booking_check(
-    missing_fields: list[InformationField],
-) -> str:
-    retval = DefaultPhrases.BOOKING_CHECK_ASK_FOR_DATA
-
-    if InformationField.LAST_NAME in missing_fields:
-        return retval + f" {DefaultPhrases.ASK_LAST_NAME}"
-
-    if InformationField.EMAIL in missing_fields:
-        return retval + f" {DefaultPhrases.ASK_EMAIL}"
-
-    if InformationField.CHECK_IN in missing_fields:
-        return retval + f" {DefaultPhrases.ASK_CHECK_IN}"
-
-    return "no match in build function"
 
 def build_ask_confirmation(
     intent: Intent,
@@ -238,6 +228,16 @@ def build_ask_data_booking_request(
 
     if basic_data != "":
         return retval
+
+    if all(
+        field in missing_fields
+        for field in (
+            InformationField.FIRST_NAME,
+            InformationField.LAST_NAME,
+            InformationField.EMAIL,
+        )
+    ):
+        return retval + f" {DefaultPhrases.ASK_GUEST_DETAILS}"
 
     if (
         InformationField.FIRST_NAME in missing_fields

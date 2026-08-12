@@ -64,13 +64,14 @@ CHECKPOINT_TYPE_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("api.schemas.booking_schema", "BookingResponse"),
     ("conversation.entities.information", "Information"),
     ("conversation.entities.interaction_response", "AvailabilityResponse"),
+    ("conversation.entities.interaction_response", "BookingResponseObject"),
     ("conversation.entities.interaction_response", "BookingResponse"),
     ("conversation.entities.interaction_response", "EmptyInteractionResponse"),
     ("conversation.entities.interaction_response", "ErrorResponse"),
     ("conversation.entities.interaction_response", "GreetingResponse"),
     ("conversation.entities.interaction_response", "InformationResponse"),
     ("conversation.entities.interaction_response", "InteractionResponse"),
-    ('conversation.entities.interaction_response', 'AskConfirmationResponse'),
+    ("conversation.entities.interaction_response", "AskConfirmationResponse"),
     ("conversation.entities.message", "Message"),
     ("conversation.graph.state", "ConfirmationOutcome"),
     ("conversation.graph.state", "ConversationMessage"),
@@ -91,7 +92,7 @@ CHECKPOINT_TYPE_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("domain.value_objects.room_category", "RoomCategory"),
     ("domain.value_objects.stay_period", "StayPeriod"),
     ("domain.services.find_matching_rooms", "MatchResponse"),
-    ('conversation.value_object.default_phrases', 'DefaultPhrases'),
+    ("conversation.value_object.default_phrases", "DefaultPhrases"),
 )
 
 
@@ -170,6 +171,7 @@ def build_conversation_graph(
             "terminate": "terminate_conversation",
             "confirmation": "resolve_confirmation",
             "intent": "activate_intent",
+            "response": "build_response",
         },
     )
     workflow.add_conditional_edges(

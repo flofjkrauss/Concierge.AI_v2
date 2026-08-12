@@ -14,6 +14,7 @@ from domain.entities.room import Room
 from domain.value_objects.booking_status import BookingStatus
 from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.money import Money
+from domain.value_objects.room_category import RoomCategory
 from domain.value_objects.stay_period import StayPeriod
 
 
@@ -273,7 +274,7 @@ class JsonDatabase(DatabaseInterface):
             room_id=record["room_id"],
             room_number=record["number"],
             floor=record["floor"],
-            category=record["category_id"],
+            category=RoomCategory(record["category_id"]),
             max_occupancy=int(record["max_occupancy"]),
             price_per_night=Money(
                 amount=Decimal(record["price_per_night"]),
@@ -290,6 +291,7 @@ class JsonDatabase(DatabaseInterface):
             customer_data = self._read_json(self._customers_path)
             data = self._read_json(self._bookings_path)
 
+            customer: Customer | None = None
             for record in customer_data["customers"]:
                 if record["email"] == email and record["last_name"] == last_name:
                     customer = self._customer_from_record(record=record)

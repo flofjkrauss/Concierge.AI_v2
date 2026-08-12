@@ -3,20 +3,16 @@
 from abc import ABC, abstractmethod
 
 from conversation.entities.message import Message
-from conversation.value_object.intent import Intent
-
-
-#debug
 from conversation.models.information.interface import DebugTestInput
-
+from conversation.value_object.intent import Intent
 
 
 class IntentionDetectorInterface(ABC):
     """Define the data operations required by the business services."""
 
     @abstractmethod
-    def determine(self, text: Message) -> Intent:
-        """Tries to determine the language of text"""
+    def determine(self, message: Message) -> Intent:
+        """Determine the intent of a conversation message."""
 
 
 class DummyIntentClassifier(IntentionDetectorInterface):

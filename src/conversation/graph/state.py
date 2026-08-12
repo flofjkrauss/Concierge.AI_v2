@@ -38,6 +38,7 @@ class DomainOperation(StrEnum):
     """Domain operations that can be selected by conversation routing."""
 
     FIND_AVAILABILITY = "find_availability"
+    CHECK_BOOKING_AVAILABILITY = "check_booking_availability"
     GET_BOOKING = "get_booking"
     CREATE_BOOKING = "create_booking"
     CANCEL_BOOKING = "cancel_booking"
@@ -50,15 +51,16 @@ class ExpectedInteractionKind(StrEnum):
 
     BOOKING_CONFIRMATION = "booking_confirmation"
     CANCELLATION_CONFIRMATION = "cancellation_confirmation"
+    INFORMATION_CHANGE_CONFIRMATION = "information_change_confirmation"
 
 
 @dataclass(frozen=True, slots=True)
 class ExpectedInteraction:
-    """A pending confirmation and the operation it authorizes."""
+    """A pending confirmation and its optional domain operation."""
 
     kind: ExpectedInteractionKind
     intent: Intent
-    operation: DomainOperation
+    operation: DomainOperation | None
 
 
 class ConfirmationOutcome(StrEnum):
@@ -67,6 +69,8 @@ class ConfirmationOutcome(StrEnum):
     CONFIRMED = "confirmed"
     DECLINED = "declined"
     CHANGED = "changed"
+    INFORMATION_CHANGE_CONFIRMED = "information_change_confirmed"
+    INFORMATION_CHANGE_DECLINED = "information_change_declined"
     INTERRUPTED = "interrupted"
     UNCLEAR = "unclear"
 
@@ -89,6 +93,11 @@ class ConversationState(TypedDict):
     missing_fields: list[InformationField]
     unknown_counter: int
     expected_interaction: ExpectedInteraction | None
+    pending_information_changes: dict[InformationField, Information]
+    availability_requested: bool
+    validated_availability_signature: (
+        tuple[str, str, int | None, bool | None, str | None] | None
+    )
 
     # Transient current-turn state
     incoming_message: str | None
@@ -96,6 +105,7 @@ class ConversationState(TypedDict):
     translated_message: Message | None
     detected_intent: Intent | None
     extracted_information: list[Information]
+    changed_fields: list[InformationField]
     action: Action | None
     domain_operation: DomainOperation | None
     domain_data: object | None

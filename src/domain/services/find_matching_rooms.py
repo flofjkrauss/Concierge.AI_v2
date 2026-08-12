@@ -73,5 +73,5 @@ def find_matching_rooms(
 
     except (KeyError, ValueError, TypeError) as error:
         LOG_MSG.error(f"find_matching_room failed due to an exception: {error}")
-    finally:
-        return retval
+
+    return retval

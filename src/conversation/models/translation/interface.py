@@ -2,8 +2,8 @@
 
 from abc import ABC, abstractmethod
 
-from conversation.entities.message import Message
 from configuration.application import ApplicationSettings
+from conversation.entities.message import Message
 
 
 class TranslatorInterface(ABC):
