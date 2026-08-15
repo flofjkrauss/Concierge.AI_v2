@@ -8,11 +8,21 @@ from conversation.value_object.intent import Intent
 from observability.log_messages import LOG_MSG
 from observability.utils.to_json import to_jsonable
 
+INFORMATION_TOPICS_WIRE_TOPIC = "available_topics"
+
 
 class DefaultPhrases(StrEnum):
     GREETING = "Welcome! How can I help you?"
     ASK_INTENT = "Unfortunately, I was not able to understand you. Please try again."
-    ERROR_MESSAGE = "Something went terribly wrong!"
+    ERROR_MESSAGE = (
+        "I couldn't complete that request. Your chat is still open, "
+        "so please try again."
+    )
+    EMAIL_IN_USE = (
+        "This email address is already in use by another guest. "
+        "Please use the matching first and last name or provide a different "
+        "email address."
+    )
     AVAILABLE_ROOM_CATEGORIES = "According to your request, these room categories are available...."
     NO_VACANCY = "Unfortunately, we have no vacancy in the requested stay period."
     AVAILABILITY_ASK_FOR_DATA = "To offer possible booking options, I need to collect additional data. Please tell me:"
@@ -23,6 +33,9 @@ class DefaultPhrases(StrEnum):
     ASK_NUMBER_GUESTS = "How many people are you?"
     BOOKING_ASK_FOR_DATA = "To complete your booking, I still need some information."
     CANCELLATION_ASK_FOR_DATA = "To complete your cancellation, I still need some information."
+    ASK_GUEST_DETAILS = (
+        "Please tell me your first and last name and your email address."
+    )
     ASK_FIRST_AND_LAST_NAME = "Please tell me your full name."
     ASK_FIRST_NAME = "Please tell me your first name."
     ASK_LAST_NAME = "Please tell me your family name."
@@ -35,69 +48,235 @@ class DefaultPhrases(StrEnum):
     BOOKING_NOT_FOUND = "I could not find any booking that matches the provided informations."
     REPEAT_ASK_CONFIRMATION = "I am sorry, I was not able to understand you. Did you confirm the last request?"
     NEED_ANYTHNG_ELSE = "Your request has been processed. Anything else I can help you out with?"
+    GENERIC_ASK_FOR_DATA = (
+        "To continue with your request, I still need the following information:"
+    )
+    GENERIC_ASK_FOR_CONFIRMATION = (
+        "Please confirm whether you want to continue with the current request."
+    )
+    ASK_INFORMATION_TOPIC = (
+        f"({INFORMATION_TOPICS_WIRE_TOPIC})"
+        "What would you like to know about the hotel? You can ask about:\n"
+        "- Arrival and departure: check-in, check-out, early check-in, late "
+        "check-out, and luggage storage\n"
+        "- Rooms and guest services: room categories, accessibility, family "
+        "services, service animals, smoking, housekeeping, and laundry\n"
+        "- Food and leisure: breakfast, restaurant, bar, room service, and pool\n"
+        "- Connectivity and transport: Wi-Fi, parking, EV charging, public "
+        "transport, and airport transfers\n"
+        "- Policies and local information: payment methods, cancellation policy, "
+        "pets, location, local attractions, front desk, and contact details"
+    )
+    ABORT_BOOKING_REQUEST = "The reservation process has been cancelled. Anything else I help you with?"
+    ABORT_CANCEL_REQUEST = "Cancellation aborted. Your booking remains confirmed. Anything else I help you with?"
 
 
 
 
-def build(action: Action, intent: Intent, missing_fields: list[InformationField]) -> str:
+def build(
+    action: Action,
+    intent: Intent,
+    missing_fields: list[InformationField],
+) -> str:
     match action:
         case Action.ASK_FOR_DATA:
-            return build_ask_data(intent=intent, missing_fields=missing_fields)
+            return build_ask_data(
+                intent=intent,
+                missing_fields=missing_fields,
+            )
+
         case Action.ASK_FOR_CONFIRMATION:
-            return build_ask_confirmation(intent=intent, missing_fields=missing_fields)
-    return "no match in build function"
+            return build_ask_confirmation(
+                intent=intent,
+                missing_fields=missing_fields,
+            )
+
+        case Action.CONFIRMATION_DECLINED:
+            return build_confirmation_declined(
+                intent=intent,
+                missing_fields=missing_fields,
+            )
+
+        case _:
+            LOG_MSG.warning(
+                "Unexpected action in phrase builder",
+                extra=to_jsonable(
+                    {
+                        "action": action,
+                        "intent": intent,
+                        "missing_fields": missing_fields,
+                    }
+                ),
+            )
+            return DefaultPhrases.ASK_INTENT
 
 
-def build_ask_confirmation(intent: Intent, missing_fields: list[InformationField]) -> str:
+def build_confirmation_declined(intent: Intent, missing_fields: list[InformationField]) -> str:
+    match intent:
+        case Intent.BOOKING_CANCELLATION:
+            return DefaultPhrases.ABORT_CANCEL_REQUEST
+
+        case Intent.BOOKING_REQUEST:
+            return DefaultPhrases.ABORT_BOOKING_REQUEST
+
+        case _:
+            LOG_MSG.warning(
+                "Unexpected intent in confirmation phrase builder",
+                extra=to_jsonable({"intent": intent}),
+            )
+            return DefaultPhrases.GENERIC_ASK_FOR_CONFIRMATION
+
+def build_ask_confirmation(
+    intent: Intent,
+    missing_fields: list[InformationField],
+) -> str:
     if missing_fields:
-        LOG_MSG.debug("Missing fields in confirmation branch", extra=to_jsonable(missing_fields))
-        return DefaultPhrases.REPEAT_ASK_CONFIRMATION
+        LOG_MSG.warning(
+            "Confirmation requested while required fields are still missing",
+            extra=to_jsonable(
+                {
+                    "intent": intent,
+                    "missing_fields": missing_fields,
+                }
+            ),
+        )
+        return _build_missing_fields_fallback(missing_fields)
+
     match intent:
         case Intent.BOOKING_CANCELLATION:
             return DefaultPhrases.ASK_CONFIRMATION_CANCELLATION
+
         case Intent.BOOKING_REQUEST:
             return DefaultPhrases.ASK_CONFIRMATION_BOOKING
-    return "no match in build function"
 
-def build_ask_data(intent: Intent, missing_fields: list[InformationField]) -> str:
+        case _:
+            LOG_MSG.warning(
+                "Unexpected intent in confirmation phrase builder",
+                extra=to_jsonable({"intent": intent}),
+            )
+            return DefaultPhrases.GENERIC_ASK_FOR_CONFIRMATION
+
+def build_ask_data(
+    intent: Intent,
+    missing_fields: list[InformationField],
+) -> str:
     match intent:
         case Intent.AVAILABILITY_CHECK:
-            return build_ask_data_availability(missing_fields=missing_fields)
+            return build_ask_data_availability(
+                missing_fields=missing_fields,
+            )
+
+        case Intent.BOOKING_CHECK:
+            return build_ask_data_booking_check(
+                missing_fields=missing_fields,
+            )
+
         case Intent.BOOKING_REQUEST:
-            return build_ask_data_booking_request(missing_fields=missing_fields)
+            return build_ask_data_booking_request(
+                missing_fields=missing_fields,
+            )
+
         case Intent.BOOKING_CANCELLATION:
-            return build_ask_data_cancellation(missing_fields=missing_fields)
-    return "no match in build function"
+            return build_ask_data_cancellation(
+                missing_fields=missing_fields,
+            )
 
+        case Intent.INFORMATION_REQUEST:
+            if InformationField.INFORMATION_TOPIC in missing_fields:
+                return DefaultPhrases.ASK_INFORMATION_TOPIC
 
-def build_ask_data_cancellation(missing_fields: list[InformationField]) -> str:
-    retval = DefaultPhrases.CANCELLATION_ASK_FOR_DATA
+        case _:
+            pass
+
+    LOG_MSG.warning(
+        "Unexpected intent / missing-fields combination in data phrase builder",
+        extra=to_jsonable(
+            {
+                "intent": intent,
+                "missing_fields": missing_fields,
+            }
+        ),
+    )
+
+    return _build_missing_fields_fallback(missing_fields)
+
+def build_ask_data_booking_check(
+    missing_fields: list[InformationField],
+) -> str:
+    retval = DefaultPhrases.BOOKING_CHECK_ASK_FOR_DATA
+
     if InformationField.LAST_NAME in missing_fields:
         return retval + f" {DefaultPhrases.ASK_LAST_NAME}"
+
     if InformationField.EMAIL in missing_fields:
         return retval + f" {DefaultPhrases.ASK_EMAIL}"
+
     if InformationField.CHECK_IN in missing_fields:
         return retval + f" {DefaultPhrases.ASK_CHECK_IN}"
-    return "no match in build function"
 
-def build_ask_data_booking_request(missing_fields: list[InformationField]) -> str:
-    retval = DefaultPhrases.BOOKING_ASK_FOR_DATA
-    basic_data = build_ask_data_availability(missing_fields=missing_fields, called_from_booking=True)
-    retval += basic_data
-    if basic_data != "":
-        return retval
-    if InformationField.FIRST_NAME in missing_fields and InformationField.LAST_NAME in missing_fields:
-        retval += f" {DefaultPhrases.ASK_FIRST_AND_LAST_NAME}"
-        return retval
-    if InformationField.FIRST_NAME in missing_fields:
-        return retval + f" {DefaultPhrases.ASK_FIRST_NAME}"
+    return retval + " " + _build_missing_fields_fallback(missing_fields)
+
+
+def build_ask_data_cancellation(
+    missing_fields: list[InformationField],
+) -> str:
+    retval = DefaultPhrases.CANCELLATION_ASK_FOR_DATA
+
     if InformationField.LAST_NAME in missing_fields:
         return retval + f" {DefaultPhrases.ASK_LAST_NAME}"
-    if InformationField.BREAKFAST in missing_fields:
-        return retval + f" {DefaultPhrases.ASK_BREAKFAST}"
+
     if InformationField.EMAIL in missing_fields:
         return retval + f" {DefaultPhrases.ASK_EMAIL}"
-    return "no match in build function"
+
+    if InformationField.CHECK_IN in missing_fields:
+        return retval + f" {DefaultPhrases.ASK_CHECK_IN}"
+
+    return retval + " " + _build_missing_fields_fallback(missing_fields)
+
+def build_ask_data_booking_request(
+    missing_fields: list[InformationField],
+) -> str:
+    retval = DefaultPhrases.BOOKING_ASK_FOR_DATA
+
+    basic_data = build_ask_data_availability(
+        missing_fields=missing_fields,
+        called_from_booking=True,
+    )
+
+    retval += basic_data
+
+    if basic_data != "":
+        return retval
+
+    if all(
+        field in missing_fields
+        for field in (
+            InformationField.FIRST_NAME,
+            InformationField.LAST_NAME,
+            InformationField.EMAIL,
+        )
+    ):
+        return retval + f" {DefaultPhrases.ASK_GUEST_DETAILS}"
+
+    if (
+        InformationField.FIRST_NAME in missing_fields
+        and InformationField.LAST_NAME in missing_fields
+    ):
+        return retval + f" {DefaultPhrases.ASK_FIRST_AND_LAST_NAME}"
+
+    if InformationField.FIRST_NAME in missing_fields:
+        return retval + f" {DefaultPhrases.ASK_FIRST_NAME}"
+
+    if InformationField.LAST_NAME in missing_fields:
+        return retval + f" {DefaultPhrases.ASK_LAST_NAME}"
+
+    if InformationField.BREAKFAST in missing_fields:
+        return retval + f" {DefaultPhrases.ASK_BREAKFAST}"
+
+    if InformationField.EMAIL in missing_fields:
+        return retval + f" {DefaultPhrases.ASK_EMAIL}"
+
+    return retval + " " + _build_missing_fields_fallback(missing_fields)
 
 
 
@@ -119,5 +298,38 @@ def build_ask_data_availability(missing_fields: list[InformationField], called_f
 
     return ""
 
+def _build_missing_fields_fallback(
+    missing_fields: list[InformationField],
+) -> str:
+    if not missing_fields:
+        return DefaultPhrases.ASK_INTENT
+
+    field_labels = {
+        InformationField.CHECK_IN: "your check-in date",
+        InformationField.CHECK_OUT: "your check-out date",
+        InformationField.GUEST_COUNT: "the number of guests",
+        InformationField.ACCESSIBLE: "whether you need an accessible room",
+        InformationField.BREAKFAST: "whether you would like breakfast",
+        InformationField.FIRST_NAME: "your first name",
+        InformationField.LAST_NAME: "your last name",
+        InformationField.EMAIL: "your email address",
+        InformationField.PHONE: "your phone number",
+        InformationField.PREFERRED_LANG: "your preferred language",
+        InformationField.ROOM_CATEGORY: "your preferred room category",
+        InformationField.INFORMATION_TOPIC: "what you would like to know",
+    }
+
+    labels = [
+        field_labels.get(
+            field,
+            field.value.replace("_", " "),
+        )
+        for field in missing_fields
+    ]
+
+    return (
+        f"{DefaultPhrases.GENERIC_ASK_FOR_DATA} "
+        f"{', '.join(labels)}."
+    )
 
 

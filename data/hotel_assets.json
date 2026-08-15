@@ -161,7 +161,7 @@
       "number": "205",
       "floor": 2,
       "category_id": "deluxe",
-      "accessible": false,
+      "accessible": true,
       "price_per_night": "150",
       "max_occupancy": 3,
       "in_service": true

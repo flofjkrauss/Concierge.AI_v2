@@ -40,3 +40,22 @@ def test_focus_chat_input_uses_prevent_scroll_and_runs_once(
     assert '__harbourLightInitialInputFocusBound' in markup
     assert 'focus({preventScroll: true})' in markup
     assert html.call_args.kwargs == {"unsafe_allow_javascript": True}
+
+
+def test_tab_close_registers_beacon_with_keepalive_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    html = Mock()
+    monkeypatch.setattr(lifecycle.st, "html", html)
+
+    lifecycle.register_tab_close_termination(
+        "https://hotel.test/api/conversation/session-1/terminate"
+    )
+
+    markup = html.call_args.args[0]
+    assert "navigator.sendBeacon(url)" in markup
+    assert 'method: "POST"' in markup
+    assert "keepalive: true" in markup
+    assert 'window.addEventListener("pagehide"' in markup
+    assert '"https://hotel.test/api/conversation/session-1/terminate"' in markup
+    assert html.call_args.kwargs == {"unsafe_allow_javascript": True}

@@ -24,8 +24,8 @@ from conversation.graph.state import (
     ConversationOutput,
     ConversationState,
 )
-from conversation.information_extrator import InformationExtractor
-from conversation.intent_classifier import IntentClassifier
+from conversation.models.information.interface import InformationExtractorInterface
+from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 from database.interface import DatabaseInterface
@@ -64,12 +64,14 @@ CHECKPOINT_TYPE_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("api.schemas.booking_schema", "BookingResponse"),
     ("conversation.entities.information", "Information"),
     ("conversation.entities.interaction_response", "AvailabilityResponse"),
+    ("conversation.entities.interaction_response", "BookingResponseObject"),
     ("conversation.entities.interaction_response", "BookingResponse"),
     ("conversation.entities.interaction_response", "EmptyInteractionResponse"),
     ("conversation.entities.interaction_response", "ErrorResponse"),
     ("conversation.entities.interaction_response", "GreetingResponse"),
     ("conversation.entities.interaction_response", "InformationResponse"),
     ("conversation.entities.interaction_response", "InteractionResponse"),
+    ("conversation.entities.interaction_response", "AskConfirmationResponse"),
     ("conversation.entities.message", "Message"),
     ("conversation.graph.state", "ConfirmationOutcome"),
     ("conversation.graph.state", "ConversationMessage"),
@@ -89,6 +91,8 @@ CHECKPOINT_TYPE_ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("domain.value_objects.money", "Money"),
     ("domain.value_objects.room_category", "RoomCategory"),
     ("domain.value_objects.stay_period", "StayPeriod"),
+    ("domain.services.find_matching_rooms", "MatchResponse"),
+    ("conversation.value_object.default_phrases", "DefaultPhrases"),
 )
 
 
@@ -105,8 +109,8 @@ def build_conversation_graph(
     *,
     database: DatabaseInterface,
     translator: TranslatorInterface,
-    intent_classifier: IntentClassifier,
-    information_extractor: InformationExtractor,
+    intent_classifier: IntentionDetectorInterface,
+    information_extractor: InformationExtractorInterface,
     user_interaction: UserInteraction,
     checkpointer: BaseCheckpointSaver[str],
     domain_adapter: ConversationDomainAdapter | None = None,
@@ -167,6 +171,7 @@ def build_conversation_graph(
             "terminate": "terminate_conversation",
             "confirmation": "resolve_confirmation",
             "intent": "activate_intent",
+            "response": "build_response",
         },
     )
     workflow.add_conditional_edges(

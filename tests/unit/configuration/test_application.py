@@ -13,3 +13,10 @@ def test_application_settings_expose_project_defaults() -> None:
     assert settings.streamlit_headless is True
     assert settings.streamlit_gather_usage_stats is False
     assert settings.streamlit_development_mode is False
+    assert settings.translation_model_repository == "facebook/nllb-200-distilled-600M"
+    assert settings.language_detector_download_url.startswith("https://")
+    assert (
+        settings.intent_detection_model_repository
+        == "floriankrauss/intent_detector_concierge"
+    )
+    assert settings.information_extraction_model_repository == "Qwen/Qwen3-8B-GGUF"

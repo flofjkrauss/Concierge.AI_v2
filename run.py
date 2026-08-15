@@ -8,8 +8,11 @@ from fastapi import FastAPI
 
 from configuration.application import ApplicationSettings
 from configuration.fastapi import FastapiSettings
+from utils.check_port_availability import require_configured_ports_available
+from utils.download_models import ensure_models_available
 from utils.fastapi_lifespan import lifespan
 from utils.import_router import import_router
+from utils.wait_for_api import wait_for_api
 
 
 def create_app() -> FastAPI:
@@ -66,6 +69,9 @@ def _streamlit_command(settings: ApplicationSettings) -> list[str]:
     ]
 
 
+
+
+
 def _stop_processes(processes: tuple[subprocess.Popen[bytes], ...]) -> None:
     """Stop and reap every running child process."""
 
@@ -81,10 +87,17 @@ def _start_processes(
 ) -> tuple[subprocess.Popen[bytes], subprocess.Popen[bytes]]:
     """Start one API process and one Streamlit client process."""
 
+    require_configured_ports_available(settings)
+
     uvicorn_process = subprocess.Popen(
         _uvicorn_command(settings)
         )
     try:
+        wait_for_api(
+            url=ApplicationSettings.get_settings().api_health_endpoint,
+            timeout=ApplicationSettings.get_settings().health_check_timeout
+        )
+        print("ConciergeAI API ready")
         streamlit_process = subprocess.Popen(
             _streamlit_command(settings),
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
@@ -98,6 +111,7 @@ def _start_processes(
 def main() -> None:
     """Supervise the FastAPI application and Streamlit client together."""
     settings = ApplicationSettings.get_settings()
+    ensure_models_available(settings)
     processes: tuple[subprocess.Popen[bytes], ...] = ()
 
     try:

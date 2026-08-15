@@ -1,16 +1,19 @@
 """conversation entity."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
-from enum import StrEnum
 from datetime import date
+from enum import StrEnum
 
 from api.schemas.availability_schema import (
     AvailabilityResponse as api_availability_response,
 )
 from api.schemas.booking_schema import BookingResponse as api_booking_response
-
+from conversation.value_object.information_fields import InformationField
+from domain.value_objects.booking_status import BookingStatus
 from domain.value_objects.money import Money
 from domain.value_objects.room_category import RoomCategory
-from domain.value_objects.booking_status import BookingStatus
 
 
 class UserOptions(StrEnum):
@@ -47,12 +50,17 @@ class InformationResponse(InteractionResponse):
 @dataclass(slots=True)
 class AvailabilityResponse(InteractionResponse):
     """availability request response"""
-    content: api_availability_response
+    content: api_availability_response | list[InformationField]
 
 @dataclass(slots=True)
 class BookingResponse(InteractionResponse):
     """booking request response"""
-    content: api_booking_response
+    content: (
+        api_booking_response
+        | BookingResponseObject
+        | list[InformationField]
+        | None
+    )
 
 @dataclass(slots=True)
 class GreetingResponse(InteractionResponse):
@@ -62,7 +70,7 @@ class GreetingResponse(InteractionResponse):
 @dataclass(slots=True)
 class AskConfirmationResponse(InteractionResponse):
     """ ask for confirmation response """
-    data: api_booking_response
+    data: object
 
 @dataclass(slots=True, frozen=True)
 class BookingResponseObject:
@@ -71,7 +79,7 @@ class BookingResponseObject:
     guest_count: int
     check_in: date
     check_out: date
-    total_prize: int
+    total_prize: Money
     accessible: bool
     breakfast: bool
     first_name: str

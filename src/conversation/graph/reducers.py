@@ -37,13 +37,20 @@ def merge_messages[MessageEntry: IdentifiedMessage](
 
 def merge_information(
     current: Mapping[InformationField, Information] | None,
-    updates: Mapping[InformationField, Information] | None,
+    updates: Mapping[InformationField, Information | None] | None,
 ) -> dict[InformationField, Information]:
-    """Merge information without mutating either input mapping.
+    """Merge or remove information without mutating either input mapping.
 
     A new value replaces the old value for the same ``InformationField``.
+    ``None`` removes the field so request-scoped values can be cleaned up.
     """
 
     merged = dict(current or {})
-    merged.update(updates or {})
+
+    for field, information in (updates or {}).items():
+        if information is None:
+            merged.pop(field, None)
+        else:
+            merged[field] = information
+
     return merged

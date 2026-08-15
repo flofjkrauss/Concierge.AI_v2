@@ -23,6 +23,18 @@ def test_route_after_analysis_prioritizes_termination_then_confirmation() -> Non
 
 
 @pytest.mark.parametrize(
+    "action",
+    [
+        Action.REPORT_INVALID_DATE,
+        Action.REPORT_REUSED_DATE,
+        Action.DISPLAY_INFO,
+    ],
+)
+def test_route_after_analysis_builds_immediate_response(action: Action) -> None:
+    assert route_after_analysis({"action": action}) == "response"  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
     ("outcome", "route"),
     [
         (ConfirmationOutcome.CONFIRMED, "execute"),

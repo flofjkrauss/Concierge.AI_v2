@@ -170,6 +170,12 @@
       "topic": "contact",
       "title": "Hotel contact",
       "answer": "The front desk can be reached at +1-207-555-0140 or frontdesk@harbourlight.example."
+    },
+    {
+      "information_id": "HLH-INFO-029",
+      "topic": "pool",
+      "title": "Pool",
+      "answer": "The hotel has a terrific pool directly at the seaside."
     }
   ]
 }

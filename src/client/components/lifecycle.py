@@ -61,31 +61,36 @@ def scroll_chat_to_latest(message_id: str, message_count: int) -> None:
     )
 
 
-def focus_chat_input_on_load() -> None:
-    """Focus the guest input once after a full browser-page load."""
+def focus_chat_input_on_load(focus_request_id: str = "initial-load") -> None:
+    """Focus the guest input once for each newly rendered assistant response."""
 
+    encoded_request_id = json.dumps(focus_request_id)
     st.html(
-        """
+        f"""
         <script>
-        (() => {
-          if (window.__harbourLightInitialInputFocusBound) return;
-          window.__harbourLightInitialInputFocusBound = true;
+        (() => {{
+          const requestId = {encoded_request_id};
+          if (window.__harbourLightLastInputFocusRequest === requestId) return;
+          if (requestId === 'initial-load') {{
+            window.__harbourLightInitialInputFocusBound = true;
+          }}
 
-          const focusInput = () => {
+          const focusInput = () => {{
             const input = document.querySelector('[data-testid="stChatInput"] textarea');
             if (!input || input.disabled) return false;
-            input.focus({preventScroll: true});
+            input.focus({{preventScroll: true}});
+            window.__harbourLightLastInputFocusRequest = requestId;
             return true;
-          };
+          }};
 
           if (focusInput()) return;
-          const observer = new MutationObserver(() => {
+          const observer = new MutationObserver(() => {{
             if (!focusInput()) return;
             observer.disconnect();
-          });
-          observer.observe(document.body, {childList: true, subtree: true});
+          }});
+          observer.observe(document.body, {{childList: true, subtree: true}});
           window.setTimeout(() => observer.disconnect(), 2000);
-        })();
+        }})();
         </script>
         """,
         unsafe_allow_javascript=True,

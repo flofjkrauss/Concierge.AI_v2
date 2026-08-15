@@ -11,11 +11,13 @@ import streamlit as st
 
 from client.components.api import ConversationResponse, ResponseKind
 from client.components.models import (
+    AvailabilitySelectionData,
     BookingCardData,
     ChatEntry,
     InformationCardData,
     Shortcut,
 )
+from conversation.value_object.default_phrases import INFORMATION_TOPICS_WIRE_TOPIC
 
 CATEGORY_LABELS = {
     "single": "Single Room",
@@ -30,6 +32,7 @@ INFORMATION_TOPIC_SYMBOLS = {
     "check_out": "↗",
     "wifi": "📶",
     "breakfast": "☕",
+    "pool": "≈",
     "pets": "🐾",
     "parking": "P",
     "room_categories": "▦",
@@ -60,6 +63,7 @@ INFORMATION_TOPIC_TITLES = {
     "check_out": "Check-out time",
     "wifi": "Wi-Fi",
     "breakfast": "Breakfast service",
+    "pool": "Pool",
     "pets": "Pet policy",
     "parking": "Guest parking",
     "room_categories": "Room categories",
@@ -89,6 +93,56 @@ INFORMATION_TOPIC_ALIASES = {
     "accessability": "accessibility",
     "late_check_in": "late_check_out",
 }
+INFORMATION_TOPIC_GROUPS = (
+    (
+        "Stay & arrival",
+        (
+            "check_in",
+            "check_out",
+            "early_check_in",
+            "late_check_out",
+            "luggage_storage",
+        ),
+    ),
+    (
+        "Rooms & guest needs",
+        (
+            "room_categories",
+            "accessibility",
+            "family_services",
+            "service_animals",
+            "smoking",
+            "housekeeping",
+            "laundry",
+        ),
+    ),
+    (
+        "Food & leisure",
+        ("breakfast", "restaurant", "bar", "room_service", "pool"),
+    ),
+    (
+        "Travel & connectivity",
+        (
+            "wifi",
+            "parking",
+            "ev_charging",
+            "public_transport",
+            "airport_transfer",
+            "location",
+        ),
+    ),
+    (
+        "Policies & local help",
+        (
+            "payment_methods",
+            "cancellation_policy",
+            "pets",
+            "local_attractions",
+            "front_desk",
+            "contact",
+        ),
+    ),
+)
 
 
 def apply_theme(
@@ -159,10 +213,13 @@ def render_transcript(
             if response is None:
                 continue
 
-            actionable = (
+            unconsumed = (
                 session_active
-                and entry.message_id == latest_message_id
                 and entry.message_id not in consumed_actions
+            )
+            actionable = unconsumed and (
+                response.kind is ResponseKind.AVAILABILITY
+                or entry.message_id == latest_message_id
             )
             action = _render_structured_response(
                 response,
@@ -203,6 +260,10 @@ def render_information_card(information: InformationCardData) -> None:
     """Render one hotel-information answer from the conversation API."""
 
     topic = INFORMATION_TOPIC_ALIASES.get(information.topic, information.topic)
+    if topic == INFORMATION_TOPICS_WIRE_TOPIC:
+        _render_information_topics_card(information)
+        return
+
     symbol = INFORMATION_TOPIC_SYMBOLS.get(topic, "i")
     title = (
         information.title
@@ -225,6 +286,50 @@ def render_information_card(information: InformationCardData) -> None:
     st.markdown(markup, unsafe_allow_html=True)
 
 
+def _render_information_topics_card(information: InformationCardData) -> None:
+    """Render the complete hotel-information topic guide."""
+
+    title = information.title or "What can I help with?"
+    groups = "".join(
+        (
+            '<section class="harbour-information-topics-card__group">'
+            f"<h5>{escape(group_title)}</h5>"
+            '<ul class="harbour-information-topics-card__items">'
+            + "".join(
+                (
+                    "<li>"
+                    '<span class="harbour-information-topics-card__topic-icon" '
+                    'aria-hidden="true">'
+                    f"{escape(INFORMATION_TOPIC_SYMBOLS[topic])}"
+                    "</span>"
+                    f"<span>{escape(INFORMATION_TOPIC_TITLES[topic])}</span>"
+                    "</li>"
+                )
+                for topic in topics
+            )
+            + "</ul>"
+            "</section>"
+        )
+        for group_title, topics in INFORMATION_TOPIC_GROUPS
+    )
+    markup = (
+        '<section class="harbour-information-card '
+        'harbour-information-topics-card" '
+        f'aria-label="Hotel information: {escape(title)}">'
+        '<header class="harbour-information-topics-card__header">'
+        '<span class="harbour-information-card__icon" aria-hidden="true">i</span>'
+        '<div class="harbour-information-card__content">'
+        '<span class="harbour-information-card__eyebrow">Hotel information</span>'
+        f"<h4>{escape(title)}</h4>"
+        "<p>Choose a topic below and ask your question in your own words.</p>"
+        "</div>"
+        "</header>"
+        f'<div class="harbour-information-topics-card__grid">{groups}</div>'
+        "</section>"
+    )
+    st.markdown(markup, unsafe_allow_html=True)
+
+
 def _render_room_cards(
     response: ConversationResponse,
     *,
@@ -235,6 +340,13 @@ def _render_room_cards(
     rooms = response.rooms()
     if not rooms:
         return None
+
+    raw_request = response.availability_request()
+    request = (
+        AvailabilitySelectionData.from_mapping(raw_request)
+        if raw_request is not None
+        else None
+    )
 
     selected: Shortcut | None = None
     with st.container(key=f"room_grid_{message_id}"):
@@ -273,12 +385,14 @@ def _render_room_cards(
                     f"Select {label}",
                     key=f"select_{message_id}_{category}",
                     type="primary",
-                    disabled=not actionable,
+                    disabled=not actionable or request is None,
                     width="stretch",
                 ):
+                    if request is None:
+                        continue
                     selected = Shortcut(
                         visible_text=f"Select {label}",
-                        api_text=f"I would like to book the {label}.",
+                        api_text=request.booking_message(category),
                         source_message_id=message_id,
                     )
     return selected
