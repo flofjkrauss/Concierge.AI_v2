@@ -9,7 +9,15 @@ clone the repository and run these commands in PowerShell:
 ```powershell
 git clone <repository-url>
 cd Concierge.AI_v2
-python -3.13 -m venv .venv
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+Or as single commands:
+
+```powershell
+git clone <repository-url>
+cd Concierge.AI_v2
+py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install --only-binary=llama-cpp-python "llama-cpp-python==0.3.34" --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
