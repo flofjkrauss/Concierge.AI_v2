@@ -1,6 +1,56 @@
 # Concierge.AI_v2
 Multi-language, modular based chat support for guest-hotel interactions
 
+## Installation
+
+Concierge.AI_v2 supports Python 3.12 and Python 3.13. On a new Windows system,
+clone the repository and run these commands in PowerShell:
+
+```powershell
+git clone <repository-url>
+cd Concierge.AI_v2
+
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+python -m pip install -e .
+python .\run.py
+```
+
+Use `.venv\Scripts\activate.bat` in Command Prompt or
+`source .venv/Scripts/activate` in Git Bash. The editable installation is
+required because the application loads its JSON data, README, favicon,
+Streamlit entry point, and model artifacts from the source checkout.
+
+For development and tests, install the optional development dependencies:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+`pyproject.toml` is the single source of truth for Python dependencies. When
+`python run.py` starts, the application checks these project-local model paths:
+
+- `src/conversation/models/translation/model_data/nllb-200-distilled-600M/`
+- `src/conversation/models/translation/model_data/lid.176.bin`
+- `src/conversation/models/intent/model_data/intent-classifier/`
+- `src/conversation/models/information/model_data/Qwen3-8B-Q4_K_M.gguf`
+
+Missing model files are downloaded automatically before the API and client
+processes start. The first start therefore requires an internet connection and
+approximately 8 GB of free disk space. Download progress and errors are written
+to the console. The same check can be run manually:
+
+```powershell
+python -m conversation.models.translation.download_models
+```
+
+The default dependency resolves the standard PyPI build of PyTorch. If a CUDA
+build is required, install the matching `torch==2.11.0` build for the target
+system before installing Concierge.AI_v2. On Windows, `llama-cpp-python` may
+require a C/C++ build toolchain when pip cannot find a compatible pre-built
+wheel.
+
 # ConciergeAI Architecture
 
 The diagram below is intentionally simplified for README use. The editable draw.io version contains the full framework mapping, intent lifecycle, and response routing.
@@ -55,53 +105,6 @@ flowchart TD
     class RESPONSE,RETURN,OPTIONS,SUMMARY output;
     class CONFIRM,BOUNDARY decision;
 ```
-
-## Installation
-
-Concierge.AI_v2 supports Python 3.12 and Python 3.13. Create and activate a
-virtual environment, then install the application from the repository root:
-
-```shell
-python -m pip install -e .
-```
-
-For development and tests, install the optional development dependencies:
-
-```shell
-python -m pip install -e ".[dev]"
-```
-
-The editable installation is intentional. The current application loads its
-JSON data, README, favicon, Streamlit entry point, and local model artifacts
-from this source checkout. A non-editable `pip install .` can build and install
-the Python package, but the installed application does not yet relocate those
-runtime files into the environment.
-
-`pyproject.toml` is the single source of truth for Python dependencies. The
-large model artifacts are not Python dependencies and are not included in the
-package. They must be available separately at these project-local paths:
-
-- `src/conversation/models/translation/model_data/nllb-200-distilled-600M/`
-- `src/conversation/models/translation/model_data/lid.176.bin`
-- `src/conversation/models/intent/model_data/intent-classifier/`
-- `src/conversation/models/information/model_data/Qwen3-8B-Q4_K_M.gguf`
-
-When `python run.py` starts, every missing model artifact is downloaded before
-the API and client processes are launched. The same check can be run manually:
-
-```shell
-python -m conversation.models.translation.download_models
-```
-
-Model downloads remain separate from package installation and are stored only
-in the project-local paths listed above.
-
-The default dependency resolves the standard PyPI build of PyTorch. If a CUDA
-build is required, install the matching `torch==2.11.0` build for the target
-system before installing Concierge.AI_v2.
-
-On Windows, `llama-cpp-python` may require a C/C++ build toolchain when pip
-cannot find a compatible pre-built wheel.
 
 ## Streamlit concierge client
 
