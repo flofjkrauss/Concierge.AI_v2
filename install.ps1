@@ -1,4 +1,4 @@
-py -3.13 -m venv .venv
+python -3.13 -m venv .venv
 
 & .\.venv\Scripts\Activate.ps1
 
