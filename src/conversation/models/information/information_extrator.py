@@ -18,6 +18,7 @@ from conversation.models.information.information_extraction_system_prompt import
 )
 from conversation.models.information.interface import InformationExtractorInterface
 from conversation.value_object.information_fields import InformationField
+from observability.log_messages import LOG_MSG
 
 
 class InformationExtractor(InformationExtractorInterface):
@@ -117,8 +118,5 @@ class InformationExtractor(InformationExtractorInterface):
             return information
         
         except (ValueError, TypeError, KeyError) as error:
-            print(
-                f"Invalid Information: "
-                f"{field_name}={value!r} ({error})"
-    )
+            LOG_MSG.debug(f"Invalid Information: {field_name}={value!r} ({error})")
             return None
