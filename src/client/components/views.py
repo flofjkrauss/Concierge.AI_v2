@@ -17,6 +17,7 @@ from client.components.models import (
     InformationCardData,
     Shortcut,
 )
+from conversation.value_object.default_phrases import INFORMATION_TOPICS_WIRE_TOPIC
 
 CATEGORY_LABELS = {
     "single": "Single Room",
@@ -92,6 +93,56 @@ INFORMATION_TOPIC_ALIASES = {
     "accessability": "accessibility",
     "late_check_in": "late_check_out",
 }
+INFORMATION_TOPIC_GROUPS = (
+    (
+        "Stay & arrival",
+        (
+            "check_in",
+            "check_out",
+            "early_check_in",
+            "late_check_out",
+            "luggage_storage",
+        ),
+    ),
+    (
+        "Rooms & guest needs",
+        (
+            "room_categories",
+            "accessibility",
+            "family_services",
+            "service_animals",
+            "smoking",
+            "housekeeping",
+            "laundry",
+        ),
+    ),
+    (
+        "Food & leisure",
+        ("breakfast", "restaurant", "bar", "room_service", "pool"),
+    ),
+    (
+        "Travel & connectivity",
+        (
+            "wifi",
+            "parking",
+            "ev_charging",
+            "public_transport",
+            "airport_transfer",
+            "location",
+        ),
+    ),
+    (
+        "Policies & local help",
+        (
+            "payment_methods",
+            "cancellation_policy",
+            "pets",
+            "local_attractions",
+            "front_desk",
+            "contact",
+        ),
+    ),
+)
 
 
 def apply_theme(
@@ -209,6 +260,10 @@ def render_information_card(information: InformationCardData) -> None:
     """Render one hotel-information answer from the conversation API."""
 
     topic = INFORMATION_TOPIC_ALIASES.get(information.topic, information.topic)
+    if topic == INFORMATION_TOPICS_WIRE_TOPIC:
+        _render_information_topics_card(information)
+        return
+
     symbol = INFORMATION_TOPIC_SYMBOLS.get(topic, "i")
     title = (
         information.title
@@ -226,6 +281,50 @@ def render_information_card(information: InformationCardData) -> None:
         f"<h4>{escape(title)}</h4>"
         f"<p>{escape(information.answer)}</p>"
         "</div>"
+        "</section>"
+    )
+    st.markdown(markup, unsafe_allow_html=True)
+
+
+def _render_information_topics_card(information: InformationCardData) -> None:
+    """Render the complete hotel-information topic guide."""
+
+    title = information.title or "What can I help with?"
+    groups = "".join(
+        (
+            '<section class="harbour-information-topics-card__group">'
+            f"<h5>{escape(group_title)}</h5>"
+            '<ul class="harbour-information-topics-card__items">'
+            + "".join(
+                (
+                    "<li>"
+                    '<span class="harbour-information-topics-card__topic-icon" '
+                    'aria-hidden="true">'
+                    f"{escape(INFORMATION_TOPIC_SYMBOLS[topic])}"
+                    "</span>"
+                    f"<span>{escape(INFORMATION_TOPIC_TITLES[topic])}</span>"
+                    "</li>"
+                )
+                for topic in topics
+            )
+            + "</ul>"
+            "</section>"
+        )
+        for group_title, topics in INFORMATION_TOPIC_GROUPS
+    )
+    markup = (
+        '<section class="harbour-information-card '
+        'harbour-information-topics-card" '
+        f'aria-label="Hotel information: {escape(title)}">'
+        '<header class="harbour-information-topics-card__header">'
+        '<span class="harbour-information-card__icon" aria-hidden="true">i</span>'
+        '<div class="harbour-information-card__content">'
+        '<span class="harbour-information-card__eyebrow">Hotel information</span>'
+        f"<h4>{escape(title)}</h4>"
+        "<p>Choose a topic below and ask your question in your own words.</p>"
+        "</div>"
+        "</header>"
+        f'<div class="harbour-information-topics-card__grid">{groups}</div>'
         "</section>"
     )
     st.markdown(markup, unsafe_allow_html=True)

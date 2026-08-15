@@ -30,10 +30,12 @@ from conversation.graph.state import (
 )
 from conversation.value_object.action import Action
 from conversation.value_object.booking_selection import BookingSelection
+from conversation.value_object.default_phrases import DefaultPhrases
 from conversation.value_object.information_fields import InformationField
 from conversation.value_object.intent import Intent
 from domain.entities.booking_request import BookingRequest
 from domain.entities.room import Room
+from domain.services.create_customer import EmailAlreadyInUseError
 from domain.services.find_matching_rooms import MatchResponse
 from domain.value_objects.booking_status import BookingStatus
 from domain.value_objects.information_topic import InformationTopic
@@ -489,6 +491,35 @@ def test_pool_information_topic_is_accepted() -> None:
     }
 
 
+def test_generic_information_request_lists_supported_topics() -> None:
+    topic = Information(
+        InformationField.INFORMATION_TOPIC,
+        InformationTopic.WIFI,
+    )
+    message = Message("Give me hotel information.")
+
+    updates = update_progress(
+        _context(),
+        _state(
+            current_intent=Intent.INFORMATION_REQUEST,
+            detected_intent=Intent.INFORMATION_REQUEST,
+            last_intent_fulfilled=False,
+            next_missing_field=None,
+            expected_interaction=None,
+            parsed_message=message,
+            translated_message=message,
+            extracted_information=[topic],
+            original_message_extracted_fields=[],
+            collected_information={},
+            pending_information_changes={},
+            unknown_counter=0,
+        ),
+    )
+
+    assert updates["action"] is Action.DISPLAY_INFO
+    assert updates["domain_data"] == DefaultPhrases.ASK_INFORMATION_TOPIC
+
+
 def test_failed_booking_creation_keeps_collected_information() -> None:
     collected = _booking_information()
     collected_before = dict(collected)
@@ -517,6 +548,30 @@ def test_failed_booking_creation_keeps_collected_information() -> None:
     assert collected == collected_before
     assert updates["availability_requested"] is False
     assert updates["validated_availability_signature"] is None
+
+
+def test_booking_creation_reports_email_owned_by_another_customer() -> None:
+    context = _context()
+    context.domain_adapter.execute.side_effect = EmailAlreadyInUseError(
+        "already in use"
+    )
+
+    updates = execute_domain_action(
+        context,
+        _state(
+            domain_operation=DomainOperation.CREATE_BOOKING,
+            collected_information=_booking_information(),
+        ),
+    )
+
+    assert updates == {
+        "domain_operation": None,
+        "domain_data": None,
+        "action": Action.REPORT_EMAIL_IN_USE,
+        "last_intent_fulfilled": False,
+        "availability_requested": False,
+        "validated_availability_signature": None,
+    }
 
 
 def test_old_room_button_starts_fresh_availability_after_booking_reset() -> None:

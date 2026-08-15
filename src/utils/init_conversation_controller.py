@@ -13,7 +13,6 @@ from conversation.graph.builder import (
 )
 from conversation.models.information.information_extrator import InformationExtractor
 from conversation.models.intent.intent_classifier import IntentClassifier
-from conversation.models.translation.m2m100_translator import M2M100Translator
 from conversation.models.translation.nllb200_distilled_translator import NLLBTranslator
 from conversation.user_interaction import UserInteraction
 from database.interface import DatabaseInterface

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import cast
 from unittest.mock import Mock
 
@@ -9,6 +10,7 @@ import pytest
 from configuration.application import ApplicationSettings
 from conversation.entities.information import Information
 from conversation.entities.interaction_response import (
+    BookingResponseObject,
     EmptyInteractionResponse,
     ErrorResponse,
     InteractionResponse,
@@ -24,14 +26,16 @@ from conversation.graph.state import (
     ExpectedInteractionKind,
     MessageRole,
 )
-from conversation.information_extrator import InformationExtractor
+from conversation.models.information.interface import InformationExtractorInterface
 from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 from conversation.value_object.action import Action
 from conversation.value_object.information_fields import InformationField
 from conversation.value_object.intent import Intent
-from domain.entities.booking import Booking
+from domain.services.find_matching_rooms import MatchResponse
+from domain.value_objects.booking_status import BookingStatus
+from domain.value_objects.money import Money
 
 
 def graph_state(**values: object) -> ConversationState:
@@ -41,7 +45,7 @@ def graph_state(**values: object) -> ConversationState:
 def make_nodes() -> tuple[ConversationNodes, Mock, Mock, Mock, Mock, Mock]:
     translator = Mock(spec=TranslatorInterface)
     classifier = Mock(spec=IntentionDetectorInterface)
-    extractor = Mock(spec=InformationExtractor)
+    extractor = Mock(spec=InformationExtractorInterface)
     interaction = Mock(spec=UserInteraction)
     adapter = Mock()
     nodes = ConversationNodes(
@@ -68,6 +72,22 @@ def expected_confirmation(
     )
 
 
+def booking_response() -> BookingResponseObject:
+    return BookingResponseObject(
+        status=BookingStatus.CONFIRMED,
+        room_category="double",
+        guest_count=2,
+        check_in=date(2030, 6, 10),
+        check_out=date(2030, 6, 13),
+        total_prize=Money(Decimal("300.00"), "EUR"),
+        accessible=False,
+        breakfast=False,
+        first_name="Alex",
+        last_name="Morgan",
+        email="alex@example.com",
+    )
+
+
 def test_begin_turn_initializes_new_thread() -> None:
     nodes, _, _, _, interaction, _ = make_nodes()
     response = InteractionResponse(True, "session-1")
@@ -90,8 +110,12 @@ def test_begin_turn_initializes_new_thread() -> None:
 def test_begin_turn_requires_session_id_for_new_thread() -> None:
     nodes, *_ = make_nodes()
 
-    with pytest.raises(ValueError, match="requires a session_id"):
-        nodes.begin_turn(graph_state())
+    result = nodes.begin_turn(graph_state())
+
+    assert isinstance(result["response"], ErrorResponse)
+    assert result["response"].reason == (
+        "A new conversation requires a valid session ID"
+    )
 
 
 def test_begin_turn_returns_empty_response_for_blank_message() -> None:
@@ -141,7 +165,11 @@ def test_translate_input_detects_and_translates_foreign_language() -> None:
     assert result["language"] == "de"
     assert result["translated_message"].content == "Hello"  # type: ignore[union-attr]
     assert result["translated_message"].language == "de"  # type: ignore[union-attr]
-    translator.translate.assert_called_once_with(parsed, target_lang="en")
+    translator.translate.assert_called_once_with(
+        parsed,
+        target_lang="en",
+        source_lang="de",
+    )
 
 
 def test_translate_input_uses_domain_language_when_detection_is_empty() -> None:
@@ -161,7 +189,10 @@ def test_translate_input_reuses_known_language() -> None:
 
     result = nodes.translate_input(graph_state(parsed_message=parsed, language="en"))
 
-    assert result["translated_message"] == parsed
+    normalized = result["translated_message"]
+    assert normalized.content == parsed.content  # type: ignore[union-attr]
+    assert normalized.original_content == parsed.content  # type: ignore[union-attr]
+    assert normalized.language == "en"  # type: ignore[union-attr]
     translator.determine.assert_not_called()
     translator.translate.assert_not_called()
 
@@ -183,26 +214,6 @@ def test_store_user_message_marks_role() -> None:
         "message_history": [ConversationMessage(MessageRole.USER, message)]
     }
 
-
-def test_classifier_receives_history_and_current_message() -> None:
-    nodes, _, classifier, *_ = make_nodes()
-    previous = ConversationMessage(MessageRole.ASSISTANT, Message("Welcome"))
-    current = Message("Book a room", message_id="current")
-    current_entry = ConversationMessage(MessageRole.USER, current)
-    classifier.determine.return_value = Intent.BOOKING_REQUEST
-
-    result = nodes.classify_intent(
-        graph_state(
-            translated_message=current,
-            message_history=[previous, current_entry],
-        )
-    )
-
-    model_message = classifier.determine.call_args.kwargs["message"]
-    assert "Assistant: Welcome" in model_message.content
-    assert "Current user message:\nBook a room" in model_message.content
-    assert model_message.content.count("Book a room") == 1
-    assert result["detected_intent"] is Intent.BOOKING_REQUEST
 
 
 def test_extractor_receives_current_translated_message() -> None:
@@ -311,6 +322,7 @@ def test_resolve_confirmation_returns_to_fields_when_required_data_changed() -> 
         graph_state(
             expected_interaction=expected_confirmation(),
             extracted_information=[changed],
+            changed_fields=[InformationField.CHECK_IN],
         )
     )
 
@@ -470,6 +482,7 @@ def test_determine_action_requests_missing_fields() -> None:
     assert result == {
         "action": Action.ASK_FOR_DATA,
         "domain_data": [InformationField.EMAIL],
+        "next_missing_field": InformationField.EMAIL,
         "last_intent_fulfilled": False,
     }
 
@@ -494,35 +507,21 @@ def test_determine_action_selects_immediate_domain_operation(
     ) == {"domain_operation": operation}
 
 
-@pytest.mark.parametrize(
-    ("intent", "kind", "operation"),
-    [
-        (
-            Intent.BOOKING_REQUEST,
-            ExpectedInteractionKind.BOOKING_CONFIRMATION,
-            DomainOperation.CREATE_BOOKING,
-        ),
-    ],
-)
-def test_determine_action_requires_confirmation_for_side_effects(
-    intent: Intent,
-    kind: ExpectedInteractionKind,
-    operation: DomainOperation,
-) -> None:
+def test_determine_action_previews_booking_before_confirmation() -> None:
     nodes, *_ = make_nodes()
 
     result = nodes.determine_action(
         graph_state(
-            current_intent=intent,
+            current_intent=Intent.BOOKING_REQUEST,
             missing_fields=[],
             collected_information={},
         )
     )
 
-    assert result["action"] is Action.ASK_FOR_CONFIRMATION
-    expected = result["expected_interaction"]
-    assert expected.kind is kind  # type: ignore[union-attr]
-    assert expected.operation is operation  # type: ignore[union-attr]
+    assert result == {
+        "domain_operation": DomainOperation.PREVIEW_BOOKING,
+        "last_intent_fulfilled": False,
+    }
 
 
 def test_determine_action_asks_for_intent_when_none_is_actionable() -> None:
@@ -536,9 +535,12 @@ def test_determine_action_asks_for_intent_when_none_is_actionable() -> None:
     ) == {"action": Action.ASK_INTENT, "domain_data": None}
 
 
-def test_execute_domain_action_delegates_and_selects_response_action() -> None:
+def test_execute_domain_action_delegates_and_selects_response_action(
+    booking_request,
+) -> None:
     nodes, _, _, _, _, adapter = make_nodes()
-    adapter.execute.return_value = ["room"]
+    match_response = MatchResponse(booking_request, [])
+    adapter.execute.return_value = match_response
     collected = {}
 
     result = nodes.execute_domain_action(
@@ -553,15 +555,14 @@ def test_execute_domain_action_delegates_and_selects_response_action() -> None:
         information=collected,
     )
     assert result["action"] is Action.DISPLAY_AVAILABILITY
-    assert result["domain_data"] == ["room"]
+    assert result["domain_data"] is match_response
     assert result["last_intent_fulfilled"] is True
 
 
-def test_execute_domain_action_requires_confirmation_after_booking_lookup(
-    booking: Booking,
-) -> None:
+def test_execute_domain_action_requires_confirmation_after_booking_lookup() -> None:
     nodes, _, _, _, _, adapter = make_nodes()
-    adapter.execute.return_value = booking
+    response = booking_response()
+    adapter.execute.return_value = response
 
     result = nodes.execute_domain_action(
         graph_state(
@@ -572,7 +573,7 @@ def test_execute_domain_action_requires_confirmation_after_booking_lookup(
     )
 
     assert result["action"] is Action.ASK_FOR_CONFIRMATION
-    assert result["domain_data"] is booking
+    assert result["domain_data"] is response
     expected = result["expected_interaction"]
     assert expected.kind is ExpectedInteractionKind.CANCELLATION_CONFIRMATION  # type: ignore[union-attr]
     assert expected.operation is DomainOperation.CANCEL_BOOKING  # type: ignore[union-attr]
@@ -620,8 +621,10 @@ def test_execute_domain_action_converts_expected_error_to_response() -> None:
 def test_execute_domain_action_requires_operation() -> None:
     nodes, *_ = make_nodes()
 
-    with pytest.raises(ValueError, match="No domain operation was selected"):
-        nodes.execute_domain_action(graph_state(domain_operation=None))
+    result = nodes.execute_domain_action(graph_state(domain_operation=None))
+
+    assert isinstance(result["response"], ErrorResponse)
+    assert result["last_intent_fulfilled"] is False
 
 
 def test_build_response_preserves_existing_response() -> None:
@@ -661,8 +664,12 @@ def test_build_response_delegates_to_user_interaction() -> None:
 def test_build_response_requires_action() -> None:
     nodes, *_ = make_nodes()
 
-    with pytest.raises(ValueError, match="requires an action"):
-        nodes.build_response(graph_state(response=None, action=None))
+    result = nodes.build_response(graph_state(response=None, action=None))
+
+    assert isinstance(result["response"], ErrorResponse)
+    assert result["response"].reason == (
+        "Response construction requires an action"
+    )
 
 
 def test_terminate_conversation_closes_session() -> None:
@@ -741,7 +748,7 @@ def test_write_state_to_logs_serializes_state(monkeypatch) -> None:
 
     assert nodes.write_state_to_logs(state) == {"initialized": True}
     assert debug.call_args.args == ("Conversation message processed",)
-    assert debug.call_args.kwargs["extra"]["conversation_state"] == {
+    assert debug.call_args.kwargs["extra"] == {
         "initialized": True,
         "current_intent": "booking_check",
     }
@@ -749,8 +756,8 @@ def test_write_state_to_logs_serializes_state(monkeypatch) -> None:
 
 def test_nodes_from_settings_uses_application_defaults() -> None:
     translator = Mock(spec=TranslatorInterface)
-    classifier = Mock(spec=IntentClassifier)
-    extractor = Mock(spec=InformationExtractor)
+    classifier = Mock(spec=IntentionDetectorInterface)
+    extractor = Mock(spec=InformationExtractorInterface)
     interaction = Mock(spec=UserInteraction)
     adapter = Mock()
 

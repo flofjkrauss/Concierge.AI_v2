@@ -1,9 +1,76 @@
 from __future__ import annotations
 
+import sys
+from contextlib import nullcontext
 from datetime import UTC, date, datetime
 from decimal import Decimal
+from importlib.util import find_spec
+from types import ModuleType, SimpleNamespace
+from typing import NoReturn
 
 import pytest
+
+
+class _UnavailablePretrainedDependency:
+    """Fail clearly if a unit test accidentally loads a real local model."""
+
+    @classmethod
+    def from_pretrained(cls, *args: object, **kwargs: object) -> NoReturn:
+        raise RuntimeError("Local model loading is disabled in unit tests")
+
+
+def _unavailable_dependency(*args: object, **kwargs: object) -> NoReturn:
+    raise RuntimeError("Optional model dependency is disabled in unit tests")
+
+
+def _install_optional_model_stubs() -> None:
+    """Make production adapters importable without heavyweight model runtimes."""
+
+    if find_spec("torch") is None:
+        torch = ModuleType("torch")
+        torch.cuda = SimpleNamespace(is_available=lambda: False)
+        torch.xpu = SimpleNamespace(is_available=lambda: False)
+        torch.device = lambda value: value
+        torch.inference_mode = nullcontext
+        torch.set_num_threads = lambda value: None
+        torch.set_num_interop_threads = lambda value: None
+        torch.softmax = _unavailable_dependency
+        torch.argmax = _unavailable_dependency
+        sys.modules["torch"] = torch
+
+    if find_spec("transformers") is None:
+        transformers = ModuleType("transformers")
+        transformers.AutoModelForSeq2SeqLM = _UnavailablePretrainedDependency
+        transformers.AutoModelForSequenceClassification = (
+            _UnavailablePretrainedDependency
+        )
+        transformers.AutoTokenizer = _UnavailablePretrainedDependency
+        transformers.M2M100ForConditionalGeneration = (
+            _UnavailablePretrainedDependency
+        )
+        transformers.M2M100Tokenizer = _UnavailablePretrainedDependency
+        sys.modules["transformers"] = transformers
+
+    if find_spec("fasttext") is None:
+        fasttext = ModuleType("fasttext")
+        fasttext.load_model = _unavailable_dependency
+        sys.modules["fasttext"] = fasttext
+
+    if find_spec("llama_cpp") is None:
+        llama_cpp = ModuleType("llama_cpp")
+        llama_types = ModuleType("llama_cpp.llama_types")
+        llama_cpp.Llama = _UnavailablePretrainedDependency
+        llama_types.CreateChatCompletionResponse = dict
+        sys.modules["llama_cpp"] = llama_cpp
+        sys.modules["llama_cpp.llama_types"] = llama_types
+
+    if find_spec("huggingface_hub") is None:
+        huggingface_hub = ModuleType("huggingface_hub")
+        huggingface_hub.hf_hub_download = _unavailable_dependency
+        sys.modules["huggingface_hub"] = huggingface_hub
+
+
+_install_optional_model_stubs()
 
 from database.interface import DatabaseInterface
 from domain.entities.booking import Booking

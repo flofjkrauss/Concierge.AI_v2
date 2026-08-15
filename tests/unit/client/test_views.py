@@ -1,6 +1,7 @@
 """Tests for Streamlit presentation helpers."""
 
 from contextlib import nullcontext
+from html import escape
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -10,13 +11,22 @@ from client.components import views
 from client.components.models import BookingCardData, InformationCardData
 from client.components.views import (
     _booking_amenities_html,
+    _booking_customer_html,
+    _booking_fact,
     _date_range,
     _format_money,
+    _optional_line,
     _render_booking_card,
+    _render_booking_details,
+    _render_confirmation,
+    _render_room_cards,
     _room_details,
     _room_image_path,
     _room_price_html,
     _room_prices,
+    _svg_data_uri,
+    apply_theme,
+    render_header,
     render_information_card,
 )
 
@@ -236,6 +246,36 @@ def test_information_symbols_cover_all_hotel_information_topics() -> None:
 
     assert set(views.INFORMATION_TOPIC_SYMBOLS) == expected_topics
     assert set(views.INFORMATION_TOPIC_TITLES) == expected_topics
+    grouped_topics = {
+        topic
+        for _, topics in views.INFORMATION_TOPIC_GROUPS
+        for topic in topics
+    }
+    assert grouped_topics == expected_topics
+
+
+def test_available_information_topics_render_as_grouped_card(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    markdown = Mock()
+    monkeypatch.setattr(views.st, "markdown", markdown)
+
+    render_information_card(
+        InformationCardData(
+            topic="available_topics",
+            answer="Available hotel information topics",
+            title=None,
+        )
+    )
+
+    markup = markdown.call_args.args[0]
+    assert "harbour-information-topics-card" in markup
+    assert "What can I help with?" in markup
+    for group_title, _ in views.INFORMATION_TOPIC_GROUPS:
+        assert escape(group_title) in markup
+    for topic_title in views.INFORMATION_TOPIC_TITLES.values():
+        assert topic_title in markup
+    assert markdown.call_args.kwargs == {"unsafe_allow_html": True}
 
 
 def test_booking_amenities_render_only_requested_icons() -> None:
@@ -311,3 +351,244 @@ def _booking_card_data(
         hotel_name=None,
         hotel_address=None,
     )
+
+
+def test_apply_theme_embeds_local_assets(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    theme = tmp_path / "theme.css"
+    background = tmp_path / "background.png"
+    pattern = tmp_path / "pattern.svg"
+    theme.write_text(
+        "a{background:__HARBOUR_BACKGROUND__}b{background:__HARBOUR_CHROME_PATTERN__}",
+        encoding="utf-8",
+    )
+    background.write_bytes(b"background")
+    pattern.write_bytes(b"pattern")
+    html = Mock()
+    monkeypatch.setattr(views.st, "html", html)
+
+    apply_theme(theme, background, pattern)
+
+    markup = html.call_args.args[0]
+    assert "__HARBOUR_BACKGROUND__" not in markup
+    assert "__HARBOUR_CHROME_PATTERN__" not in markup
+    assert "data:image/png;base64," in markup
+    assert "data:image/svg+xml;base64," in markup
+
+
+def test_render_header_embeds_logo(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    logo = tmp_path / "logo.svg"
+    logo.write_text("<svg></svg>", encoding="utf-8")
+    markdown = Mock()
+    monkeypatch.setattr(views.st, "container", lambda **_: nullcontext())
+    monkeypatch.setattr(views.st, "markdown", markdown)
+
+    render_header(logo)
+
+    markup = markdown.call_args.args[0]
+    assert "Harbour Light Hotel" in markup
+    assert _svg_data_uri(logo) in markup
+    assert markdown.call_args.kwargs == {"unsafe_allow_html": True}
+
+
+def test_room_cards_return_valid_selection(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    response = views.ConversationResponse.from_payload(
+        {
+            "session_active": True,
+            "text": "Rooms found",
+            "content": {
+                "rooms": [
+                    {
+                        "category": "double",
+                        "description": " Harbour view ",
+                        "max_occupancy": 2,
+                        "price_per_night": {"amount": "150", "currency": "EUR"},
+                        "accessible": True,
+                    }
+                ],
+                "request": {
+                    "check_in": "2030-06-10",
+                    "check_out": "2030-06-13",
+                    "guest_count": 2,
+                    "accessible": True,
+                },
+            },
+        }
+    )
+    monkeypatch.setattr(views.st, "container", lambda **_: nullcontext())
+    monkeypatch.setattr(views.st, "columns", lambda *_, **__: [nullcontext()])
+    monkeypatch.setattr(views.st, "button", Mock(return_value=True))
+    monkeypatch.setattr(views.st, "image", Mock())
+    monkeypatch.setattr(views.st, "markdown", Mock())
+    monkeypatch.setattr(views.st, "write", Mock())
+    monkeypatch.setattr(views.st, "caption", Mock())
+    monkeypatch.setattr(views, "_room_image_path", lambda *_: tmp_path / "room.svg")
+
+    selected = _render_room_cards(
+        response,
+        message_id="rooms-1",
+        asset_dir=tmp_path,
+        actionable=True,
+    )
+
+    assert selected is not None
+    assert selected.visible_text == "Select Double Room"
+    assert selected.source_message_id == "rooms-1"
+    assert selected.api_text.startswith("__concierge_booking_selection_v1__|")
+    views.st.write.assert_called_once_with("Harbour view")
+    views.st.caption.assert_called_once_with("Up to 2 guests · Accessible")
+
+
+def test_room_cards_ignore_missing_rooms_or_invalid_request(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    empty = views.ConversationResponse.from_payload(
+        {
+            "session_active": True,
+            "text": "No rooms",
+            "content": {"rooms": []},
+        }
+    )
+    assert (
+        _render_room_cards(
+            empty,
+            message_id="empty",
+            asset_dir=tmp_path,
+            actionable=True,
+        )
+        is None
+    )
+
+    invalid_request = views.ConversationResponse.from_payload(
+        {
+            "session_active": True,
+            "text": "Rooms",
+            "content": {"rooms": [{"category": "single"}], "request": {}},
+        }
+    )
+    button = Mock(return_value=True)
+    monkeypatch.setattr(views.st, "container", lambda **_: nullcontext())
+    monkeypatch.setattr(views.st, "columns", lambda *_, **__: [nullcontext()])
+    monkeypatch.setattr(views.st, "button", button)
+    monkeypatch.setattr(views.st, "image", Mock())
+    monkeypatch.setattr(views.st, "markdown", Mock())
+    monkeypatch.setattr(views, "_room_image_path", lambda *_: tmp_path / "room.svg")
+
+    assert (
+        _render_room_cards(
+            invalid_request,
+            message_id="invalid",
+            asset_dir=tmp_path,
+            actionable=True,
+        )
+        is None
+    )
+    assert button.call_args.kwargs["disabled"] is True
+
+
+@pytest.mark.parametrize(
+    ("booking_status", "clicked", "visible_text", "api_text"),
+    [
+        ("pending", [True, False], "Book this room", "confirm"),
+        ("confirmed", [False, True], "Keep my booking", "decline"),
+    ],
+)
+def test_confirmation_buttons_return_guest_shortcuts(
+    monkeypatch: pytest.MonkeyPatch,
+    booking_status: str,
+    clicked: list[bool],
+    visible_text: str,
+    api_text: str,
+) -> None:
+    response = views.ConversationResponse.from_payload(
+        {
+            "session_active": True,
+            "text": "Please confirm",
+            "data": {
+                "status": booking_status,
+                "room_category": "double",
+                "check_in": "2030-06-10",
+                "check_out": "2030-06-13",
+            },
+        }
+    )
+    monkeypatch.setattr(
+        views.st,
+        "columns",
+        lambda *_, **__: [nullcontext(), nullcontext()],
+    )
+    monkeypatch.setattr(views.st, "button", Mock(side_effect=clicked))
+    render_card = Mock()
+    monkeypatch.setattr(views, "_render_booking_card", render_card)
+
+    selected = _render_confirmation(
+        response,
+        message_id="confirmation-1",
+        actionable=True,
+    )
+
+    assert selected is not None
+    assert (selected.visible_text, selected.api_text) == (visible_text, api_text)
+    assert selected.source_message_id == "confirmation-1"
+    assert render_card.call_args.kwargs["destructive"] is (
+        booking_status == "confirmed"
+    )
+
+
+def test_booking_details_render_only_valid_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    render_card = Mock()
+    monkeypatch.setattr(views, "_render_booking_card", render_card)
+    message = views.ConversationResponse.from_payload(
+        {"session_active": True, "text": "No details"}
+    )
+    _render_booking_details(message)
+    render_card.assert_not_called()
+
+    cancelled = views.ConversationResponse.from_payload(
+        {
+            "session_active": True,
+            "text": "Cancelled",
+            "content": {
+                "booking_id": "booking-1",
+                "status": "cancelled",
+                "room_category": "double",
+            },
+        }
+    )
+    _render_booking_details(cancelled)
+
+    assert render_card.call_args.kwargs == {
+        "title": "Cancelled booking",
+        "eyebrow": "Cancellation complete",
+        "destructive": True,
+    }
+
+
+def test_optional_booking_markup_escapes_guest_content() -> None:
+    assert _booking_fact("Guest", None) == ""
+    assert "&lt;Alex&gt;" in _booking_fact("Guest", "<Alex>")
+    assert _optional_line(None, "detail") == ""
+    assert "&lt;Hotel&gt;" in _optional_line("<Hotel>", "detail")
+    assert _booking_customer_html([]) == ""
+    assert "alex&amp;sam@example.com" in _booking_customer_html(
+        ["alex&sam@example.com"]
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, {}, {"amount": [], "currency": "EUR"}, {"amount": "x", "currency": "EUR"}],
+)
+def test_format_money_rejects_invalid_values(value: object) -> None:
+    assert _format_money(value) is None

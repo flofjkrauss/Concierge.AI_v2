@@ -8,6 +8,8 @@ from conversation.value_object.intent import Intent
 from observability.log_messages import LOG_MSG
 from observability.utils.to_json import to_jsonable
 
+INFORMATION_TOPICS_WIRE_TOPIC = "available_topics"
+
 
 class DefaultPhrases(StrEnum):
     GREETING = "Welcome! How can I help you?"
@@ -15,6 +17,11 @@ class DefaultPhrases(StrEnum):
     ERROR_MESSAGE = (
         "I couldn't complete that request. Your chat is still open, "
         "so please try again."
+    )
+    EMAIL_IN_USE = (
+        "This email address is already in use by another guest. "
+        "Please use the matching first and last name or provide a different "
+        "email address."
     )
     AVAILABLE_ROOM_CATEGORIES = "According to your request, these room categories are available...."
     NO_VACANCY = "Unfortunately, we have no vacancy in the requested stay period."
@@ -47,7 +54,19 @@ class DefaultPhrases(StrEnum):
     GENERIC_ASK_FOR_CONFIRMATION = (
         "Please confirm whether you want to continue with the current request."
     )
-    ASK_INFORMATION_TOPIC = "What would you like to know about the hotel?"
+    ASK_INFORMATION_TOPIC = (
+        f"({INFORMATION_TOPICS_WIRE_TOPIC})"
+        "What would you like to know about the hotel? You can ask about:\n"
+        "- Arrival and departure: check-in, check-out, early check-in, late "
+        "check-out, and luggage storage\n"
+        "- Rooms and guest services: room categories, accessibility, family "
+        "services, service animals, smoking, housekeeping, and laundry\n"
+        "- Food and leisure: breakfast, restaurant, bar, room service, and pool\n"
+        "- Connectivity and transport: Wi-Fi, parking, EV charging, public "
+        "transport, and airport transfers\n"
+        "- Policies and local information: payment methods, cancellation policy, "
+        "pets, location, local attractions, front desk, and contact details"
+    )
     ABORT_BOOKING_REQUEST = "The reservation process has been cancelled. Anything else I help you with?"
     ABORT_CANCEL_REQUEST = "Cancellation aborted. Your booking remains confirmed. Anything else I help you with?"
 

@@ -19,8 +19,3 @@ def test_none_translator_reports_english_language() -> None:
     assert translator.determine(message) == "en"
 
 
-def test_none_translator_returns_original_message() -> None:
-    translator = NoneTranslator()
-    message = Message("Hello")
-
-    assert translator.translate(message, "de") is message

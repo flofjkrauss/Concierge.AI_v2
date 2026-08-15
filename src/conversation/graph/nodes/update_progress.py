@@ -27,6 +27,8 @@ from .support import (
     _open_requested_fields,
     _plausible_information,
     _refines_fulfilled_intent,
+    _resolve_ambiguous_single_date,
+    _reused_date_field,
     _safe_log_warning,
     _starts_new_data_scope,
 )
@@ -105,6 +107,11 @@ def update_progress(
         )
     )
     extracted = [*translated_extracted, *original_extracted]
+    extracted = _resolve_ambiguous_single_date(
+        extracted,
+        existing_information,
+        original_validation_content,
+    )
     rejected_information_topic = (
         translated_topic_rejected or original_topic_rejected
     )
@@ -157,6 +164,18 @@ def update_progress(
         )
     )
     effective_existing = existing_information
+
+    reused_date_field = _reused_date_field(extracted, effective_existing)
+    if reused_date_field is not None:
+        return {
+            "collected_information": {},
+            "extracted_information": [],
+            "changed_fields": [],
+            "unknown_counter": 0,
+            "termination_requested": False,
+            "action": Action.REPORT_REUSED_DATE,
+            "domain_data": reused_date_field,
+        }
 
     extracted, invalid_fields = _plausible_information(
         extracted,

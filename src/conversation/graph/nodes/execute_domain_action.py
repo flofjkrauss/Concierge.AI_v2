@@ -9,6 +9,7 @@ from .support import (
     BookingStatus,
     ConversationState,
     DomainOperation,
+    EmailAlreadyInUseError,
     ExpectedInteraction,
     ExpectedInteractionKind,
     Information,
@@ -57,6 +58,19 @@ def execute_domain_action(
         )
         if not _is_valid_domain_result(operation, result):
             raise TypeError(f"Invalid result for domain operation {operation.value}")
+    except EmailAlreadyInUseError as error:
+        _safe_log_exception(
+            f"Domain operation {operation.value} failed",
+            error,
+        )
+        return {
+            "domain_operation": None,
+            "domain_data": None,
+            "action": Action.REPORT_EMAIL_IN_USE,
+            "last_intent_fulfilled": False,
+            "availability_requested": False,
+            "validated_availability_signature": None,
+        }
     except Exception as error:  # noqa: BLE001
         _safe_log_exception(
             f"Domain operation {operation.value} failed",

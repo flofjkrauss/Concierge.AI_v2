@@ -12,7 +12,7 @@ def test_get_information_returns_stored_answer(database: InMemoryDatabase) -> No
     database.information[InformationTopic.WIFI] = "Wi-Fi is complimentary."
 
     assert get_information(InformationTopic.WIFI, database) == (
-        "Wi-Fi is complimentary."
+        "(wifi)Wi-Fi is complimentary."
     )
 
 

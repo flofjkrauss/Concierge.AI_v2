@@ -1,7 +1,12 @@
+import pytest
 from conftest import InMemoryDatabase
 
 from domain.entities.customer import Customer
-from domain.services.create_customer import create_customer, get_customer
+from domain.services.create_customer import (
+    EmailAlreadyInUseError,
+    create_customer,
+    get_customer,
+)
 
 
 def test_create_customer_reuses_matching_customer(
@@ -48,13 +53,13 @@ def test_create_customer_rejects_email_owned_by_different_customer(
 ) -> None:
     database.customers.append(customer)
 
-    result = create_customer(
-        "Sam",
-        "Lee",
-        customer.email,
-        "de",
-        database,
-    )
+    with pytest.raises(EmailAlreadyInUseError, match="already in use"):
+        create_customer(
+            "Sam",
+            "Lee",
+            customer.email,
+            "de",
+            database,
+        )
 
-    assert result is None
     assert database.saved_customers == []

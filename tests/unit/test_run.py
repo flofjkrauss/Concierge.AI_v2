@@ -10,7 +10,6 @@ import pytest
 import run as run_module
 from configuration.application import ApplicationSettings
 from run import (
-    _require_configured_ports_available,
     _start_processes,
     _streamlit_command,
     _uvicorn_command,
@@ -119,42 +118,6 @@ def test_occupied_api_port_stops_before_starting_processes(
         in capsys.readouterr().err
     )
     popen.assert_not_called()
-
-
-def test_occupied_client_port_is_reported(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as listener:
-        listener.bind(("127.0.0.1", 0))
-        listener.listen()
-        port = listener.getsockname()[1]
-
-        with pytest.raises(SystemExit) as exc_info:
-            _require_configured_ports_available(
-                ApplicationSettings(
-                    host="127.0.0.1",
-                    port=0,
-                    streamlit_host="127.0.0.1",
-                    streamlit_port=port,
-                )
-            )
-
-    assert exc_info.value.code == 1
-    assert (
-        f"client port 127.0.0.1:{port} is already in use."
-        in capsys.readouterr().err
-    )
-
-
-def test_distinct_available_ports_pass_preflight() -> None:
-    _require_configured_ports_available(
-        ApplicationSettings(
-            host="127.0.0.1",
-            port=0,
-            streamlit_host="127.0.0.1",
-            streamlit_port=0,
-        )
-    )
 
 
 def test_main_restarts_both_processes_when_one_exits(

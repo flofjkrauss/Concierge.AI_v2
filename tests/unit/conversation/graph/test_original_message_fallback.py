@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
 
+import pytest
+
 from conversation.entities.information import Information
 from conversation.entities.message import Message
 from conversation.graph.nodes.activate_intent import activate_intent
@@ -137,7 +139,7 @@ def test_bare_integer_fills_requested_integer_field_when_extraction_is_empty() -
     extractor.extract.assert_called_once_with(message=translated)
 
 
-def test_bare_integer_does_not_override_extractor_information() -> None:
+def test_bare_integer_is_authoritative_for_requested_integer_field() -> None:
     extractor = _extractor()
     original = Message("2")
     translated = Message("2", original_content=original.content)
@@ -157,7 +159,10 @@ def test_bare_integer_does_not_override_extractor_information() -> None:
         ),
     )
 
-    assert result["extracted_information"] == [extracted_guest_count]
+    extracted = result["extracted_information"]
+    assert len(extracted) == 1
+    assert extracted[0].information_field is InformationField.GUEST_COUNT
+    assert extracted[0].content == 2
     extractor.extract.assert_called_once_with(message=translated)
 
 
@@ -427,3 +432,88 @@ def test_implausible_recovered_date_is_reported_for_requested_field() -> None:
     assert progress_update["domain_data"] is InformationField.CHECK_OUT
     assert progress_update["current_intent"] is Intent.AVAILABILITY_CHECK
     assert progress_update["extracted_information"] == []
+
+
+def test_ambiguous_single_date_can_replace_valid_check_out() -> None:
+    check_in = datetime.now(UTC).astimezone().date() + timedelta(days=10)
+    old_check_out = check_in + timedelta(days=10)
+    new_check_out = check_in + timedelta(days=7)
+    message = Message(new_check_out.strftime("%d.%m.%Y"))
+    state = _state(
+        parsed_message=message,
+        translated_message=message,
+        current_intent=Intent.BOOKING_REQUEST,
+        detected_intent=Intent.UNKNOWN,
+        last_intent_fulfilled=False,
+        next_missing_field=InformationField.FIRST_NAME,
+        expected_interaction=None,
+        extracted_information=[
+            Information(InformationField.CHECK_IN, new_check_out),
+            Information(InformationField.CHECK_OUT, new_check_out),
+        ],
+        original_message_extracted_fields=[],
+        collected_information={
+            InformationField.CHECK_IN: Information(
+                InformationField.CHECK_IN,
+                check_in,
+            ),
+            InformationField.CHECK_OUT: Information(
+                InformationField.CHECK_OUT,
+                old_check_out,
+            ),
+        },
+        pending_information_changes={},
+        unknown_counter=0,
+    )
+
+    progress_update = update_progress(_context(_extractor()), state)
+
+    pending = progress_update["pending_information_changes"]
+    assert set(pending) == {InformationField.CHECK_OUT}
+    assert pending[InformationField.CHECK_OUT].content == new_check_out
+    assert progress_update["action"] is Action.ASK_FOR_INFORMATION_CHANGE
+
+
+@pytest.mark.parametrize(
+    "existing_field",
+    [InformationField.CHECK_IN, InformationField.CHECK_OUT],
+)
+def test_repeated_stay_date_reports_existing_role(
+    existing_field: InformationField,
+) -> None:
+    check_in = datetime.now(UTC).astimezone().date() + timedelta(days=10)
+    check_out = check_in + timedelta(days=5)
+    repeated_date = check_in if existing_field is InformationField.CHECK_IN else check_out
+    message = Message(repeated_date.strftime("%d.%m.%Y"))
+    state = _state(
+        parsed_message=message,
+        translated_message=message,
+        current_intent=Intent.BOOKING_REQUEST,
+        detected_intent=Intent.UNKNOWN,
+        last_intent_fulfilled=False,
+        next_missing_field=InformationField.FIRST_NAME,
+        expected_interaction=None,
+        extracted_information=[
+            Information(InformationField.CHECK_IN, repeated_date),
+            Information(InformationField.CHECK_OUT, repeated_date),
+        ],
+        original_message_extracted_fields=[],
+        collected_information={
+            InformationField.CHECK_IN: Information(
+                InformationField.CHECK_IN,
+                check_in,
+            ),
+            InformationField.CHECK_OUT: Information(
+                InformationField.CHECK_OUT,
+                check_out,
+            ),
+        },
+        pending_information_changes={},
+        unknown_counter=0,
+    )
+
+    progress_update = update_progress(_context(_extractor()), state)
+
+    assert progress_update["action"] is Action.REPORT_REUSED_DATE
+    assert progress_update["domain_data"] is existing_field
+    assert progress_update["collected_information"] == {}

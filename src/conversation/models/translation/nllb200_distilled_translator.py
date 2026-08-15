@@ -94,7 +94,7 @@ class NLLBTranslator(TranslatorInterface):
         self._tokenizer = AutoTokenizer.from_pretrained(
             _TRANSLATION_MODEL_DIR,
             local_files_only=True,
-        )
+        ) # type: ignore[no-untyped-call]
         self._model = AutoModelForSeq2SeqLM.from_pretrained(
             _TRANSLATION_MODEL_DIR,
             local_files_only=True,

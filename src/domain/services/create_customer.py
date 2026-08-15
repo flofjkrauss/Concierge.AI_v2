@@ -6,6 +6,10 @@ from domain.entities.customer import Customer
 from observability import LOG_MSG
 
 
+class EmailAlreadyInUseError(ValueError):
+    """Raised when an email belongs to a different customer identity."""
+
+
 def create_customer(
     first_name: str,
     last_name: str,
@@ -13,7 +17,7 @@ def create_customer(
     preferred_language: str,
     database: DatabaseInterface,
     phone: str = ""
-) -> Customer | None:
+) -> Customer:
     """Create a new customer objekt and store it to database"""
     
     customer = database.identify_customer(first_name=first_name,
@@ -22,7 +26,9 @@ def create_customer(
     if customer is None:
         if database.mail_is_in_use(email=email):
             LOG_MSG.error(f"Customer could not be created. Email {email} is already in use.")
-            return None
+            raise EmailAlreadyInUseError(
+                "Email address is already in use by another customer"
+            )
         
         LOG_MSG.debug(f"Customer could not be identified: {first_name} {last_name} {email}")
         customer = Customer(

@@ -468,6 +468,78 @@ html, body, [class*="css"] {
   line-height: 1.55;
 }
 
+.harbour-information-topics-card {
+  display: block;
+}
+
+.harbour-information-topics-card__header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.harbour-information-topics-card__grid {
+  column-count: 2;
+  column-gap: 0.65rem;
+}
+
+.harbour-information-topics-card__group {
+  break-inside: avoid;
+  min-width: 0;
+  margin: 0 0 0.65rem;
+  padding: 0.72rem 0.78rem;
+  border: 1px solid rgba(217, 174, 92, 0.2);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+[data-testid="stChatMessage"] .harbour-information-topics-card__group h5 {
+  margin: 0 0 0.52rem;
+  color: #e3c987 !important;
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.035em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.harbour-information-topics-card__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.harbour-information-topics-card__items li {
+  display: inline-flex;
+  min-width: 0;
+  gap: 0.34rem;
+  align-items: center;
+  padding: 0.32rem 0.48rem;
+  border: 1px solid rgba(217, 174, 92, 0.14);
+  border-radius: 999px;
+  color: #e5e4df;
+  background: rgba(11, 17, 23, 0.35);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.harbour-information-topics-card__topic-icon {
+  display: inline-grid;
+  width: 1rem;
+  flex: 0 0 1rem;
+  place-items: center;
+  color: #e6c87e;
+  font-family: "Segoe UI Symbol", "Segoe UI Emoji", sans-serif;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
 .harbour-booking-card {
   overflow: hidden;
   margin: 1rem 0 1.1rem;
@@ -949,5 +1021,9 @@ html, body, [class*="css"] {
   .harbour-information-card__icon {
     width: 46px;
     height: 46px;
+  }
+
+  .harbour-information-topics-card__grid {
+    column-count: 1;
   }
 }

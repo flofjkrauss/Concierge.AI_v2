@@ -32,6 +32,7 @@ from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 from conversation.value_object.action import Action
 from conversation.value_object.booking_selection import BookingSelection
+from conversation.value_object.default_phrases import DefaultPhrases
 from conversation.value_object.information_fields import InformationField
 from conversation.value_object.intent import Intent
 from conversation.value_object.intent_information_mapping import (
@@ -45,7 +46,7 @@ from domain.entities.room import Room
 from domain.services.calculate_price import calculate_price
 from domain.services.cancel_booking import cancel_booking_by_name
 from domain.services.confirm_booking import confirm_booking
-from domain.services.create_customer import create_customer
+from domain.services.create_customer import EmailAlreadyInUseError, create_customer
 from domain.services.find_matching_rooms import MatchResponse, find_matching_rooms
 from domain.services.get_booking import get_booking_by_name
 from domain.services.get_information import get_information
@@ -69,6 +70,7 @@ __all__ = [
     "ConversationState",
     "DatabaseInterface",
     "DomainOperation",
+    "EmailAlreadyInUseError",
     "ExpectedInteraction",
     "ExpectedInteractionKind",
     "Information",
@@ -132,10 +134,7 @@ _POST_BOOKING_RETAINED_FIELDS = frozenset(
     }
 )
 
-_UNSUPPORTED_INFORMATION_RESPONSE = (
-    "I don't have information about that hotel service. "
-    "Is there anything else I can help with?"
-)
+_UNSUPPORTED_INFORMATION_RESPONSE = DefaultPhrases.ASK_INFORMATION_TOPIC
 
 
 def _safe_error_response(
@@ -654,6 +653,90 @@ def _coerce_requested_date(
             replace(information, information_field=next_missing_field),
         ]
     )
+
+
+def _resolve_ambiguous_single_date(
+    extracted: list[Information],
+    existing: Mapping[InformationField, Information],
+    content: str,
+) -> list[Information]:
+    """Resolve one date emitted as both stay-date fields by the extractor."""
+
+    date_fields = {
+        InformationField.CHECK_IN,
+        InformationField.CHECK_OUT,
+    }
+    extracted_dates = [
+        information
+        for information in extracted
+        if information.information_field in date_fields
+        and isinstance(information.content, date)
+    ]
+    date_values = {information.content for information in extracted_dates}
+    extracted_fields = {
+        information.information_field for information in extracted_dates
+    }
+
+    if (
+        len(date_values) != 1
+        or extracted_fields != date_fields
+        or _looks_like_date_range(content)
+    ):
+        return extracted
+
+    value = next(iter(date_values))
+    if not isinstance(value, date):
+        return extracted
+
+    check_in = _stored_date(existing, InformationField.CHECK_IN)
+    check_out = _stored_date(existing, InformationField.CHECK_OUT)
+
+    if check_in is not None and value >= check_in:
+        selected_field = InformationField.CHECK_OUT
+    elif check_out is not None and value <= check_out:
+        selected_field = InformationField.CHECK_IN
+    else:
+        return extracted
+
+    non_date_information = [
+        information
+        for information in extracted
+        if information.information_field not in date_fields
+    ]
+    selected_information = next(
+        information
+        for information in extracted_dates
+        if information.information_field == selected_field
+    )
+    return [
+        *non_date_information,
+        selected_information,
+    ]
+
+
+def _reused_date_field(
+    extracted: Iterable[Information],
+    existing: Mapping[InformationField, Information],
+) -> InformationField | None:
+    """Return the stored role of a single date repeated by the user."""
+
+    date_values = {
+        information.content
+        for information in extracted
+        if information.information_field
+        in {InformationField.CHECK_IN, InformationField.CHECK_OUT}
+        and isinstance(information.content, date)
+    }
+
+    if len(date_values) != 1:
+        return None
+
+    value = next(iter(date_values))
+    for field in (InformationField.CHECK_IN, InformationField.CHECK_OUT):
+        if _stored_date(existing, field) == value:
+            return field
+
+    return None
 
 
 def _looks_like_date_range(content: str) -> bool:

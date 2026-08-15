@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 from conversation.conversation_controller import ConversationController
 from conversation.entities.interaction_response import (
     ErrorResponse,
     InteractionResponse,
 )
+from conversation.entities.message import Message
 from conversation.graph.state import ConversationInput, ConversationOutput
+from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 
 
@@ -118,7 +121,11 @@ def test_terminate_conversation_marks_known_session_inactive() -> None:
     assert graph.updates == [
         (
             {"configurable": {"thread_id": "session-1"}},
-            {"session_active": False, "expected_interaction": None},
+            {
+                "session_active": False,
+                "expected_interaction": None,
+                "pending_information_changes": {},
+            },
         )
     ]
 
@@ -133,3 +140,128 @@ def test_terminate_conversation_ignores_unknown_session() -> None:
     controller.terminate_conversation("missing")
 
     assert graph.updates == []
+
+
+def test_initialization_failure_returns_safe_error() -> None:
+    graph = FakeGraph({"response": None, "session_active": False}, {})
+    graph.invoke = Mock(side_effect=RuntimeError("graph failed"))
+    controller = ConversationController(graph, UserInteraction())
+
+    response = controller.init_conversation()
+
+    assert isinstance(response, ErrorResponse)
+    assert response.reason == "Conversation initialization failed"
+
+
+def test_process_message_rejects_invalid_boundary_values() -> None:
+    graph = FakeGraph({"response": None, "session_active": False}, {})
+    controller = ConversationController(graph, UserInteraction())
+
+    invalid_session = controller.process_message(" ", "Hello")
+    invalid_message = controller.process_message("session-1", "\ud800")
+
+    assert isinstance(invalid_session, ErrorResponse)
+    assert invalid_session.reason == "Invalid session ID"
+    assert isinstance(invalid_message, ErrorResponse)
+    assert invalid_message.reason == "Invalid message"
+    assert graph.invocations == []
+
+
+def test_process_message_converts_graph_failures_to_safe_errors() -> None:
+    graph = FakeGraph(
+        {"response": None, "session_active": True},
+        {"session_active": True},
+    )
+    graph.invoke = Mock(side_effect=RuntimeError("graph failed"))
+    controller = ConversationController(graph, UserInteraction())
+
+    response = controller.process_message("session-1", "Hello")
+
+    assert isinstance(response, ErrorResponse)
+    assert response.reason == "Conversation message processing failed"
+
+
+def test_process_message_handles_state_lookup_failure() -> None:
+    graph = FakeGraph({"response": None, "session_active": False}, {})
+    graph.get_state = Mock(side_effect=RuntimeError("state failed"))
+    controller = ConversationController(graph, UserInteraction())
+
+    response = controller.process_message("session-1", "Hello")
+
+    assert isinstance(response, ErrorResponse)
+    assert response.reason == "Conversation state lookup failed"
+
+
+def test_termination_is_idempotent_for_inactive_session() -> None:
+    graph = FakeGraph(
+        {"response": None, "session_active": False},
+        {"session_active": False},
+    )
+    controller = ConversationController(graph, UserInteraction())
+
+    controller.terminate_conversation("session-1")
+    controller.terminate_conversation(" ")
+
+    assert graph.updates == []
+
+
+def test_patience_response_uses_stored_language_and_session_state() -> None:
+    graph = FakeGraph(
+        {"response": None, "session_active": False},
+        {"session_active": False, "language": "de"},
+    )
+    translator = Mock(spec=TranslatorInterface)
+    translator.translate.return_value = Message("Danke für Ihre Geduld.")
+    controller = ConversationController(graph, UserInteraction(), translator)
+
+    response = controller.patience_response("session-1", "Bitte warten")
+
+    assert response.session_active is False
+    assert response.text == "Danke für Ihre Geduld."
+    translator.determine.assert_not_called()
+    translator.translate.assert_called_once()
+
+
+def test_patience_response_detects_language_when_state_has_none() -> None:
+    graph = FakeGraph(
+        {"response": None, "session_active": True},
+        {"session_active": True, "language": None},
+    )
+    translator = Mock(spec=TranslatorInterface)
+    translator.determine.return_value = "de"
+    translator.translate.return_value = Message("Einen Moment bitte.")
+    controller = ConversationController(graph, UserInteraction(), translator)
+
+    response = controller.patience_response("session-1", "Bitte warten")
+
+    assert response.text == "Einen Moment bitte."
+    translator.determine.assert_called_once()
+
+
+def test_patience_response_survives_detection_and_translation_failures() -> None:
+    graph = FakeGraph(
+        {"response": None, "session_active": True},
+        {"session_active": True, "language": None},
+    )
+    translator = Mock(spec=TranslatorInterface)
+    translator.determine.side_effect = RuntimeError("detector failed")
+    controller = ConversationController(graph, UserInteraction(), translator)
+
+    response = controller.patience_response("session-1", "Bitte warten")
+
+    assert response.text.startswith("Thank you for your patience")
+
+
+def test_safe_error_falls_back_when_ui_component_fails() -> None:
+    graph = FakeGraph({"response": None, "session_active": False}, {})
+    interaction = Mock(spec=UserInteraction)
+    interaction.send_error_msg.side_effect = RuntimeError("ui failed")
+    controller = ConversationController(graph, interaction)
+
+    response = controller.process_message(" ", "Hello")
+
+    assert response == ErrorResponse(
+        session_active=True,
+        text="Something went terribly wrong!",
+        reason="Invalid session ID",
+    )

@@ -8,8 +8,12 @@ from utils.information_validator import (
     has_mail_format,
     is_boolean,
     is_date,
+    is_information_topic,
     is_non_empty_string,
+    is_person_name,
     is_positive_integer,
+    is_room_category,
+    is_yes_or_no,
 )
 
 
@@ -63,3 +67,39 @@ def test_validator_registry_covers_stable_information_fields() -> None:
     }
 
     assert supported_fields <= INFORMATION_VALIDATORS.keys()
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["Alex", "Anne-Marie", "D'Angelo", "María José"],
+)
+def test_is_person_name_accepts_realistic_names(name: str) -> None:
+    assert is_person_name(name)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [None, "A", "booking", "Alex_1", "123", "x" * 101],
+)
+def test_is_person_name_rejects_non_names(value: object) -> None:
+    assert not is_person_name(value)
+
+
+def test_confirmation_validator_accepts_only_canonical_values() -> None:
+    assert is_yes_or_no("yes")
+    assert is_yes_or_no("no")
+    assert not is_yes_or_no("Yes")
+    assert not is_yes_or_no(True)
+
+
+def test_topic_and_room_category_validators_use_domain_enums() -> None:
+    assert is_information_topic("wifi")
+    assert not is_information_topic("spa")
+    assert not is_information_topic(1)
+    assert is_room_category("double")
+    assert not is_room_category("suite")
+    assert not is_room_category(1)
+
+
+def test_validator_registry_covers_every_information_field() -> None:
+    assert set(INFORMATION_VALIDATORS) == set(InformationField)

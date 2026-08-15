@@ -5,6 +5,7 @@ import sys
 
 from configuration.application import ApplicationSettings
 
+
 def _reserve_port(host: str, port: int) -> socket.socket:
     """Temporarily reserve one configured server address."""
 

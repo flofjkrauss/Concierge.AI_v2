@@ -27,6 +27,7 @@ def route_after_analysis(state: ConversationState) -> AfterAnalysisRoute:
         return "terminate"
     if state.get("action") in {
         Action.REPORT_INVALID_DATE,
+        Action.REPORT_REUSED_DATE,
         Action.DISPLAY_INFO,
     }:
         return "response"
