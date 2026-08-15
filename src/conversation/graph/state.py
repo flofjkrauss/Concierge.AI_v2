@@ -106,6 +106,7 @@ class ConversationState(TypedDict):
     translated_message: Message | None
     detected_intent: Intent | None
     extracted_information: list[Information]
+    original_message_extracted_fields: list[InformationField]
     changed_fields: list[InformationField]
     action: Action | None
     domain_operation: DomainOperation | None

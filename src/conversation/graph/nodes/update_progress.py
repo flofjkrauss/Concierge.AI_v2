@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from .context import ConversationNodeContext
 from .support import (
-    _BOOKING_FLOW_INTENTS,
     _DATA_INTENTS,
-    _REQUEST_INFORMATION_FIELDS,
     _SESSION_IDENTITY_FIELDS,
     _UNSUPPORTED_INFORMATION_RESPONSE,
     Action,
+    BookingSelection,
     ConversationState,
     ExpectedInteraction,
     ExpectedInteractionKind,
@@ -24,7 +23,6 @@ from .support import (
     _coerce_requested_date,
     _filter_context_dependent_information,
     _information_change_data,
-    _information_removals,
     _invalid_date_to_report,
     _open_requested_fields,
     _plausible_information,
@@ -47,6 +45,7 @@ def update_progress(
     )
     requested_field = state.get("next_missing_field") if expected is None else None
     extracted = state.get("extracted_information", [])
+    original_fields = set(state.get("original_message_extracted_fields", []))
     confirmation_information = (
         [
             information
@@ -56,18 +55,58 @@ def update_progress(
         if expected is not None
         else []
     )
-    extracted = _coerce_requested_date(
-        extracted,
+    translated_extracted = [
+        information
+        for information in extracted
+        if information.information_field not in original_fields
+    ]
+    original_extracted = [
+        information
+        for information in extracted
+        if information.information_field in original_fields
+    ]
+    if BookingSelection.from_wire(current_content) is None:
+        translated_extracted = _coerce_requested_date(
+            translated_extracted,
+            requested_field,
+            current_content,
+        )
+    translated_extracted = _coerce_requested_boolean(
+        translated_extracted,
         requested_field,
-        current_content,
     )
-    extracted = _coerce_requested_boolean(
-        extracted,
+    translated_extracted, translated_topic_rejected = (
+        _filter_context_dependent_information(
+            translated_extracted,
+            current_content,
+        )
+    )
+
+    original_message = state.get("parsed_message")
+    original_content = (
+        original_message.content if isinstance(original_message, Message) else ""
+    )
+    original_validation_content = "\n".join(
+        content for content in (current_content, original_content) if content
+    )
+    original_extracted = _coerce_requested_date(
+        original_extracted,
+        requested_field,
+        original_validation_content,
+    )
+    original_extracted = _coerce_requested_boolean(
+        original_extracted,
         requested_field,
     )
-    extracted, rejected_information_topic = _filter_context_dependent_information(
-        extracted,
-        current_content,
+    original_extracted, original_topic_rejected = (
+        _filter_context_dependent_information(
+            original_extracted,
+            original_validation_content,
+        )
+    )
+    extracted = [*translated_extracted, *original_extracted]
+    rejected_information_topic = (
+        translated_topic_rejected or original_topic_rejected
     )
     requested_fields = _open_requested_fields(state)
     continues_requested_intent = any(
@@ -117,29 +156,7 @@ def update_progress(
             refining_fulfilled_intent=refining_fulfilled_intent,
         )
     )
-    preserved_fields: set[InformationField] = set()
-
-    current_intent = state.get("current_intent")
-    switches_within_booking_flow = (
-        starts_new_scope
-        and current_intent in _BOOKING_FLOW_INTENTS
-        and active_intent in _BOOKING_FLOW_INTENTS
-        and current_intent != active_intent
-    )
-
-    if switches_within_booking_flow:
-        preserved_fields.update(_REQUEST_INFORMATION_FIELDS)
-
-    removed_fields = (
-        set(_REQUEST_INFORMATION_FIELDS) - preserved_fields
-        if starts_new_scope
-        else set()
-    )
-    effective_existing = {
-        field: information
-        for field, information in existing_information.items()
-        if field not in removed_fields
-    }
+    effective_existing = existing_information
 
     extracted, invalid_fields = _plausible_information(
         extracted,
@@ -150,9 +167,7 @@ def update_progress(
         requested_field=requested_field,
     )
 
-    information_updates: dict[InformationField, Information | None] = (
-        _information_removals(removed_fields)
-    )
+    information_updates: dict[InformationField, Information | None] = {}
     pending_changes = (
         dict(state.get("pending_information_changes", {}))
         if information_change_pending

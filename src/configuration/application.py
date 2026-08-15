@@ -21,6 +21,8 @@ class ApplicationSettings(Settings):
 
     # webserver config
     host: str = "127.0.0.1"
+    #host: str = "192.168.1.167"
+    #host: str = "0.0.0.0"
     port: int = 8000
     reload: bool = False
     api_health_endpoint = "".join([
@@ -33,8 +35,9 @@ class ApplicationSettings(Settings):
     health_check_timeout: float = 180.0
 
     # Streamlit client server config
-    streamlit_host: str = "127.0.0.1"
-    #streamlit_host: str = "192.168.1.167"
+    #streamlit_host: str = "127.0.0.1"
+    #streamlit_host: str = "10.8.0.10"
+    streamlit_host: str = host
     streamlit_port: int = 8501
     streamlit_headless: bool = True
     streamlit_gather_usage_stats: bool = False

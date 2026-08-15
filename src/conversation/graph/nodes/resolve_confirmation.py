@@ -11,7 +11,6 @@ from .support import (
     Intent,
     IntentInformationMapper,
     StateUpdate,
-    _booking_request_completion_updates,
     _confirmation_decision,
     _information_change_data,
     _plausible_information,
@@ -150,10 +149,13 @@ def resolve_confirmation(
 
         if expected.intent == Intent.BOOKING_REQUEST:
             operation_decline_updates.update(
-                _booking_request_completion_updates(
-                    state,
-                    remember_check_in=False,
-                )
+                {
+                    "availability_requested": False,
+                    "validated_availability_signature": None,
+                    "missing_fields": [],
+                    "next_missing_field": None,
+                    "pending_information_changes": {},
+                }
             )
 
         return operation_decline_updates

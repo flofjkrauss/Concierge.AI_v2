@@ -62,14 +62,8 @@ def activate_intent(
         )
 
         if detected == Intent.AVAILABILITY_CHECK and starts_new_intent:
-            information_updates = {
-                InformationField.ROOM_CATEGORY: None,
-            }
-            if InformationField.CHECK_IN not in extracted_fields:
-                information_updates[InformationField.CHECK_IN] = None
             intent_updates.update(
                 {
-                    "collected_information": information_updates,
                     "availability_requested": False,
                     "validated_availability_signature": None,
                 }

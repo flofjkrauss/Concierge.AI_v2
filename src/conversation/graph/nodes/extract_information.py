@@ -39,6 +39,8 @@ _BOOLEAN_FIELDS = frozenset(
     }
 )
 
+_INTEGER_FIELDS = frozenset({InformationField.GUEST_COUNT})
+
 
 def extract_information(
     context: ConversationNodeContext, state: ConversationState
@@ -69,6 +71,20 @@ def extract_information(
         valid_information = []
 
     requested_fields = _open_requested_fields(state)
+
+    integer_information = _integer_from_original_message(
+        state,
+        original_message=original_message,
+        extracted=valid_information,
+        requested_fields=requested_fields,
+    )
+    if integer_information is not None:
+        return {
+            "extracted_information": [integer_information],
+            "original_message_extracted_fields": [
+                integer_information.information_field
+            ],
+        }
 
     if (
         not requested_fields
@@ -112,7 +128,37 @@ def extract_information(
         valid_information,
         original_information,
     )
-    return {"extracted_information": valid_information}
+    return {
+        "extracted_information": valid_information,
+        "original_message_extracted_fields": [
+            information.information_field
+            for information in original_information
+        ],
+    }
+
+
+def _integer_from_original_message(
+    state: ConversationState,
+    *,
+    original_message: object,
+    extracted: list[Information],
+    requested_fields: frozenset[InformationField],
+) -> Information | None:
+    """Parse a bare integer only when extraction returned no information."""
+
+    requested_field = state.get("next_missing_field")
+    if (
+        requested_field not in _INTEGER_FIELDS
+        or requested_field not in requested_fields
+        or not isinstance(original_message, Message)
+    ):
+        return None
+
+    try:
+        value = int(original_message.content)
+        return Information(requested_field, value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _literal_emails(content: str) -> dict[str, str]:

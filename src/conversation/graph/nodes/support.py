@@ -122,35 +122,13 @@ _BOOKING_IDENTITY_FIELDS = (
 
 _SESSION_IDENTITY_FIELDS = frozenset(_BOOKING_IDENTITY_FIELDS)
 
-_PERSISTENT_INFORMATION_FIELDS = frozenset(
+_POST_BOOKING_RETAINED_FIELDS = frozenset(
     {
-        InformationField.PHONE,
-        InformationField.PREFERRED_LANG,
-        *_SESSION_IDENTITY_FIELDS,
-    }
-)
-
-_REQUEST_INFORMATION_FIELDS = frozenset(
-    field
-    for intent in _DATA_INTENTS
-    for field in IntentInformationMapper.determine_fields(intent)
-    if field not in _PERSISTENT_INFORMATION_FIELDS
-)
-
-_BOOKING_FLOW_INTENTS = frozenset(
-    {
-        Intent.AVAILABILITY_CHECK,
-        Intent.BOOKING_REQUEST,
-    }
-)
-
-_BOOKING_REQUEST_CLEANUP_FIELDS = frozenset(
-    set(IntentInformationMapper.determine_fields(Intent.BOOKING_REQUEST))
-    - _PERSISTENT_INFORMATION_FIELDS
-    - {
         InformationField.CHECK_IN,
-        InformationField.BREAKFAST,
-        InformationField.ACCESSIBLE,
+        InformationField.FIRST_NAME,
+        InformationField.LAST_NAME,
+        InformationField.EMAIL,
+        InformationField.PHONE,
     }
 )
 
@@ -515,7 +493,8 @@ def _mentioned_information_topic(content: str) -> InformationTopic | None:
         (InformationTopic.CHECK_IN, ("check-in", "check in", "arrival time")),
         (InformationTopic.WIFI, ("wi-fi", "wifi", "internet")),
         (InformationTopic.BREAKFAST, ("breakfast",)),
-        (InformationTopic.PETS, ("pet", "dog", "cat")),
+        (InformationTopic.POOL, ("pool", "swimming")),
+        (InformationTopic.PETS, ("pet",)),
         (InformationTopic.PARKING, ("parking", "park my car")),
         (InformationTopic.LOCATION, ("location", "address", "located")),
         (InformationTopic.RESTAURANT, ("restaurant", "dinner")),
@@ -944,15 +923,14 @@ def _information_removals(
 
 def _booking_request_completion_updates(
     state: ConversationState,
-    *,
-    remember_check_in: bool,
 ) -> StateUpdate:
-    """Reset one terminal booking attempt while retaining session preferences."""
+    """Reset a confirmed booking while retaining its session lookup fields."""
+
+    existing_information = state.get("collected_information", {})
+    cleanup_fields = set(existing_information) - _POST_BOOKING_RETAINED_FIELDS
 
     updates: StateUpdate = {
-        "collected_information": _information_removals(
-            _BOOKING_REQUEST_CLEANUP_FIELDS
-        ),
+        "collected_information": _information_removals(cleanup_fields),
         "availability_requested": False,
         "validated_availability_signature": None,
         "missing_fields": [],
@@ -960,12 +938,9 @@ def _booking_request_completion_updates(
         "pending_information_changes": {},
     }
 
-    if remember_check_in:
-        check_in = state.get("collected_information", {}).get(
-            InformationField.CHECK_IN
-        )
-        if _is_valid_information(check_in):
-            updates["last_booking_check_in"] = check_in
+    check_in = existing_information.get(InformationField.CHECK_IN)
+    if _is_valid_information(check_in):
+        updates["last_booking_check_in"] = check_in
 
     return updates
 

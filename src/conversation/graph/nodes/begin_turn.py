@@ -24,6 +24,7 @@ def begin_turn(
         "translated_message": None,
         "detected_intent": None,
         "extracted_information": [],
+        "original_message_extracted_fields": [],
         "changed_fields": [],
         "action": None,
         "domain_operation": None,

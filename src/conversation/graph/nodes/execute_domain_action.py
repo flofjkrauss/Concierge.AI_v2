@@ -77,12 +77,13 @@ def execute_domain_action(
         if operation == DomainOperation.CREATE_BOOKING:
             failure_updates.update(
                 {
-                    "collected_information": {
-                        InformationField.ROOM_CATEGORY: None
-                    },
                     "availability_requested": False,
                     "validated_availability_signature": None,
                 }
+            )
+        elif operation == DomainOperation.GET_INFORMATION:
+            failure_updates["collected_information"] = _information_removals(
+                {InformationField.INFORMATION_TOPIC}
             )
         return failure_updates
 
@@ -100,9 +101,6 @@ def execute_domain_action(
         if operation == DomainOperation.CREATE_BOOKING:
             updates.update(
                 {
-                    "collected_information": {
-                        InformationField.ROOM_CATEGORY: None
-                    },
                     "availability_requested": bool(result.rooms),
                     "validated_availability_signature": None,
                 }
@@ -263,12 +261,13 @@ def execute_domain_action(
 
     if operation == DomainOperation.FIND_AVAILABILITY:
         updates["availability_requested"] = True
-    elif operation == DomainOperation.CREATE_BOOKING:
+    elif (
+        operation == DomainOperation.CREATE_BOOKING
+        and isinstance(result, BookingResponseObject)
+        and result.status == BookingStatus.CONFIRMED
+    ):
         updates.update(
-            _booking_request_completion_updates(
-                state,
-                remember_check_in=True,
-            )
+            _booking_request_completion_updates(state)
         )
     elif operation in {
         DomainOperation.GET_BOOKING,

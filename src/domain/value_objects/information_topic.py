@@ -36,3 +36,4 @@ class InformationTopic(StrEnum):
     AIRPORT_TRANSFER = "airport_transfer"
     LOCAL_ATTRACTIONS = "local_attractions"
     CONTACT = "contact"
+    POOL = "pool"

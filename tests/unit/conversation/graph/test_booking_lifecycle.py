@@ -17,8 +17,10 @@ from conversation.graph.nodes.context import ConversationNodeContext
 from conversation.graph.nodes.determine_action import determine_action
 from conversation.graph.nodes.determine_missing_fields import determine_missing_fields
 from conversation.graph.nodes.execute_domain_action import execute_domain_action
+from conversation.graph.nodes.extract_information import extract_information
 from conversation.graph.nodes.resolve_confirmation import resolve_confirmation
 from conversation.graph.nodes.support import _booking_availability_signature
+from conversation.graph.nodes.update_progress import update_progress
 from conversation.graph.reducers import merge_information
 from conversation.graph.state import (
     ConversationState,
@@ -34,6 +36,7 @@ from domain.entities.booking_request import BookingRequest
 from domain.entities.room import Room
 from domain.services.find_matching_rooms import MatchResponse
 from domain.value_objects.booking_status import BookingStatus
+from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.money import Money
 from domain.value_objects.room_category import RoomCategory
 from domain.value_objects.stay_period import StayPeriod
@@ -53,6 +56,7 @@ def _context(*, domain_result: object | None = None) -> ConversationNodeContext:
         ConversationNodeContext,
         SimpleNamespace(
             domain_adapter=domain_adapter,
+            information_extractor=Mock(),
             max_unknown_messages=2,
         ),
     )
@@ -134,7 +138,7 @@ def _effective_information(
     )
 
 
-def test_successful_booking_resets_offer_but_keeps_session_values() -> None:
+def test_successful_booking_keeps_only_identity_phone_and_check_in() -> None:
     collected = _booking_information()
     state = _state(
         domain_operation=DomainOperation.CREATE_BOOKING,
@@ -160,13 +164,10 @@ def test_successful_booking_resets_offer_but_keeps_session_values() -> None:
 
     assert set(effective) == {
         InformationField.CHECK_IN,
-        InformationField.ACCESSIBLE,
-        InformationField.BREAKFAST,
         InformationField.FIRST_NAME,
         InformationField.LAST_NAME,
         InformationField.EMAIL,
         InformationField.PHONE,
-        InformationField.PREFERRED_LANG,
     }
     assert updates["availability_requested"] is False
     assert updates["validated_availability_signature"] is None
@@ -175,7 +176,7 @@ def test_successful_booking_resets_offer_but_keeps_session_values() -> None:
     assert updates["next_missing_field"] is None
 
 
-def test_declined_booking_uses_same_reset_without_replacing_last_booking() -> None:
+def test_declined_booking_keeps_all_collected_information() -> None:
     collected = _booking_information()
     previous_check_in = Information(
         InformationField.CHECK_IN,
@@ -206,18 +207,9 @@ def test_declined_booking_uses_same_reset_without_replacing_last_booking() -> No
     )
 
     updates = resolve_confirmation(_context(), state)
-    effective = _effective_information(
-        collected,
-        updates["collected_information"],
-    )
 
-    assert InformationField.CHECK_IN in effective
-    assert InformationField.PHONE in effective
-    assert InformationField.BREAKFAST in effective
-    assert InformationField.ACCESSIBLE in effective
-    assert InformationField.CHECK_OUT not in effective
-    assert InformationField.GUEST_COUNT not in effective
-    assert InformationField.ROOM_CATEGORY not in effective
+    assert "collected_information" not in updates
+    assert state["collected_information"] == collected
     assert updates["availability_requested"] is False
     assert updates["validated_availability_signature"] is None
     assert "last_booking_check_in" not in updates
@@ -242,7 +234,7 @@ def test_booking_preview_does_not_replace_confirmed_booking_reference() -> None:
     assert updates["action"] is Action.ASK_FOR_CONFIRMATION
 
 
-def test_new_availability_clears_active_check_in_but_keeps_booking_reference() -> None:
+def test_new_availability_keeps_all_collected_information() -> None:
     last_booking_check_in = Information(InformationField.CHECK_IN, CHECK_IN)
     state = _state(
         current_intent=Intent.BOOKING_REQUEST,
@@ -263,10 +255,11 @@ def test_new_availability_clears_active_check_in_but_keeps_booking_reference() -
 
     updates = activate_intent(_context(), state)
 
-    assert updates["collected_information"] == {
-        InformationField.CHECK_IN: None,
-        InformationField.ROOM_CATEGORY: None,
-    }
+    assert "collected_information" not in updates
+    assert state["collected_information"][InformationField.CHECK_IN] is (
+        last_booking_check_in
+    )
+    assert InformationField.ROOM_CATEGORY in state["collected_information"]
     assert updates["availability_requested"] is False
     assert state["last_booking_check_in"] is last_booking_check_in
 
@@ -411,8 +404,94 @@ def test_room_category_availability_check_displays_fresh_room_cards() -> None:
     assert updates["domain_data"] == MatchResponse(request=request, rooms=[room])
 
 
-def test_failed_booking_creation_invalidates_previous_room_offer() -> None:
+def test_information_question_preserves_active_availability_fields() -> None:
+    collected = {
+        InformationField.CHECK_IN: Information(
+            InformationField.CHECK_IN,
+            CHECK_IN,
+        ),
+        InformationField.CHECK_OUT: Information(
+            InformationField.CHECK_OUT,
+            CHECK_OUT,
+        ),
+    }
+    topic = Information(
+        InformationField.INFORMATION_TOPIC,
+        InformationTopic.ROOM_CATEGORIES,
+    )
+    progress_updates = update_progress(
+        _context(),
+        _state(
+            current_intent=Intent.AVAILABILITY_CHECK,
+            detected_intent=Intent.INFORMATION_REQUEST,
+            last_intent_fulfilled=False,
+            next_missing_field=InformationField.GUEST_COUNT,
+            expected_interaction=None,
+            parsed_message=Message("What room categories do you have?"),
+            translated_message=Message("What room categories do you have?"),
+            extracted_information=[topic],
+            original_message_extracted_fields=[],
+            collected_information=collected,
+            pending_information_changes={},
+            unknown_counter=0,
+        ),
+    )
+    with_topic = _effective_information(
+        collected,
+        progress_updates["collected_information"],
+    )
+
+    assert with_topic == collected | {InformationField.INFORMATION_TOPIC: topic}
+
+    information_updates = execute_domain_action(
+        _context(domain_result="Several room categories are available."),
+        _state(
+            domain_operation=DomainOperation.GET_INFORMATION,
+            collected_information=with_topic,
+        ),
+    )
+    after_information = _effective_information(
+        with_topic,
+        information_updates["collected_information"],
+    )
+
+    assert after_information == collected
+
+
+def test_pool_information_topic_is_accepted() -> None:
+    topic = Information(
+        InformationField.INFORMATION_TOPIC,
+        InformationTopic.POOL,
+    )
+    message = Message("Does the hotel have a swimming pool?")
+
+    updates = update_progress(
+        _context(),
+        _state(
+            current_intent=Intent.INFORMATION_REQUEST,
+            detected_intent=Intent.INFORMATION_REQUEST,
+            last_intent_fulfilled=False,
+            next_missing_field=None,
+            expected_interaction=None,
+            parsed_message=message,
+            translated_message=message,
+            extracted_information=[topic],
+            original_message_extracted_fields=[],
+            collected_information={},
+            pending_information_changes={},
+            unknown_counter=0,
+        ),
+    )
+
+    assert updates["extracted_information"] == [topic]
+    assert updates["collected_information"] == {
+        InformationField.INFORMATION_TOPIC: topic
+    }
+
+
+def test_failed_booking_creation_keeps_collected_information() -> None:
     collected = _booking_information()
+    collected_before = dict(collected)
     context = _context()
     context.domain_adapter.execute.side_effect = RuntimeError("backend failed")
     context.user_interaction = Mock()
@@ -434,9 +513,8 @@ def test_failed_booking_creation_invalidates_previous_room_offer() -> None:
         ),
     )
 
-    assert updates["collected_information"] == {
-        InformationField.ROOM_CATEGORY: None
-    }
+    assert "collected_information" not in updates
+    assert collected == collected_before
     assert updates["availability_requested"] is False
     assert updates["validated_availability_signature"] is None
 
@@ -459,3 +537,45 @@ def test_old_room_button_starts_fresh_availability_after_booking_reset() -> None
     )
 
     assert updates["detected_intent"] is Intent.AVAILABILITY_CHECK
+
+
+def test_booking_selection_keeps_both_dates_while_check_in_is_requested() -> None:
+    selection = BookingSelection(
+        check_in=CHECK_IN,
+        check_out=CHECK_OUT,
+        guest_count=2,
+        accessible=False,
+        room_category=RoomCategory.DOUBLE,
+    )
+    message = Message(selection.to_wire())
+    state = _state(
+        parsed_message=message,
+        translated_message=message,
+        current_intent=Intent.BOOKING_REQUEST,
+        detected_intent=Intent.BOOKING_REQUEST,
+        last_intent_fulfilled=False,
+        next_missing_field=InformationField.CHECK_IN,
+        missing_fields=[InformationField.CHECK_IN],
+        expected_interaction=None,
+        collected_information={},
+        pending_information_changes={},
+        unknown_counter=0,
+    )
+
+    extraction_updates = extract_information(_context(), state)
+    progress_updates = update_progress(
+        _context(),
+        _state(**state, **extraction_updates),
+    )
+
+    assert {
+        information.information_field
+        for information in progress_updates["extracted_information"]
+    } >= {
+        InformationField.CHECK_IN,
+        InformationField.CHECK_OUT,
+    }
+    assert set(progress_updates["collected_information"]) >= {
+        InformationField.CHECK_IN,
+        InformationField.CHECK_OUT,
+    }

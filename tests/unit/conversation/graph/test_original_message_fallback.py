@@ -75,6 +75,10 @@ def test_missing_requested_fields_are_extracted_from_original_message() -> None:
     )
 
     assert result["extracted_information"] == [first_name, last_name]
+    assert result["original_message_extracted_fields"] == [
+        InformationField.FIRST_NAME,
+        InformationField.LAST_NAME,
+    ]
     assert [
         call.kwargs["message"] for call in extractor.extract.call_args_list
     ] == [translated, original]
@@ -101,6 +105,59 @@ def test_primary_requested_field_does_not_trigger_second_extraction() -> None:
     )
 
     assert result["extracted_information"] == [guest_count]
+    extractor.extract.assert_called_once_with(message=translated)
+
+
+def test_bare_integer_fills_requested_integer_field_when_extraction_is_empty() -> None:
+    extractor = _extractor()
+    original = Message(" 2 ")
+    translated = Message("unrelated", original_content=original.content)
+    extractor.extract.return_value = []
+
+    result = extract_information(
+        _context(extractor),
+        _state(
+            parsed_message=original,
+            translated_message=translated,
+            current_intent=Intent.AVAILABILITY_CHECK,
+            last_intent_fulfilled=False,
+            next_missing_field=InformationField.GUEST_COUNT,
+            missing_fields=[InformationField.GUEST_COUNT],
+            expected_interaction=None,
+        ),
+    )
+
+    extracted = result["extracted_information"]
+    assert len(extracted) == 1
+    assert extracted[0].information_field is InformationField.GUEST_COUNT
+    assert extracted[0].content == 2
+    assert result["original_message_extracted_fields"] == [
+        InformationField.GUEST_COUNT
+    ]
+    extractor.extract.assert_called_once_with(message=translated)
+
+
+def test_bare_integer_does_not_override_extractor_information() -> None:
+    extractor = _extractor()
+    original = Message("2")
+    translated = Message("2", original_content=original.content)
+    extracted_guest_count = Information(InformationField.GUEST_COUNT, 4)
+    extractor.extract.return_value = [extracted_guest_count]
+
+    result = extract_information(
+        _context(extractor),
+        _state(
+            parsed_message=original,
+            translated_message=translated,
+            current_intent=Intent.AVAILABILITY_CHECK,
+            last_intent_fulfilled=False,
+            next_missing_field=InformationField.GUEST_COUNT,
+            missing_fields=[InformationField.GUEST_COUNT],
+            expected_interaction=None,
+        ),
+    )
+
+    assert result["extracted_information"] == [extracted_guest_count]
     extractor.extract.assert_called_once_with(message=translated)
 
 
@@ -292,6 +349,45 @@ def test_recovered_requested_date_keeps_current_intent() -> None:
         "current_intent": Intent.AVAILABILITY_CHECK,
         "last_intent_fulfilled": False,
     }
+
+
+def test_recovered_date_is_validated_against_original_message() -> None:
+    extractor = _extractor()
+    check_in = datetime.now(UTC).astimezone().date() + timedelta(days=14)
+    original = Message(check_in.strftime("%d.%m.%Y"))
+    translated = Message(
+        "The Commission shall adopt implementing acts.",
+        original_content=original.content,
+    )
+    recovered = Information(InformationField.CHECK_IN, check_in)
+    extractor.extract.side_effect = [[], [recovered]]
+    state = _state(
+        parsed_message=original,
+        translated_message=translated,
+        current_intent=Intent.AVAILABILITY_CHECK,
+        detected_intent=Intent.UNKNOWN,
+        last_intent_fulfilled=False,
+        next_missing_field=InformationField.CHECK_IN,
+        missing_fields=[InformationField.CHECK_IN],
+        expected_interaction=None,
+        collected_information={},
+        unknown_counter=1,
+    )
+
+    extraction_update = extract_information(_context(extractor), state)
+    progress_update = update_progress(
+        _context(extractor),
+        cast(ConversationState, {**state, **extraction_update}),
+    )
+
+    assert extraction_update["original_message_extracted_fields"] == [
+        InformationField.CHECK_IN
+    ]
+    assert progress_update["extracted_information"] == [recovered]
+    assert progress_update["collected_information"] == {
+        InformationField.CHECK_IN: recovered
+    }
+    assert progress_update["unknown_counter"] == 0
 
 
 def test_implausible_recovered_date_is_reported_for_requested_field() -> None:

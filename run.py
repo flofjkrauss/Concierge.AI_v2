@@ -11,6 +11,7 @@ from configuration.fastapi import FastapiSettings
 from utils.fastapi_lifespan import lifespan
 from utils.import_router import import_router
 from utils.wait_for_api import wait_for_api
+from utils.check_port_availability import require_configured_ports_available
 
 
 def create_app() -> FastAPI:
@@ -67,6 +68,9 @@ def _streamlit_command(settings: ApplicationSettings) -> list[str]:
     ]
 
 
+
+
+
 def _stop_processes(processes: tuple[subprocess.Popen[bytes], ...]) -> None:
     """Stop and reap every running child process."""
 
@@ -81,6 +85,8 @@ def _start_processes(
     settings: ApplicationSettings,
 ) -> tuple[subprocess.Popen[bytes], subprocess.Popen[bytes]]:
     """Start one API process and one Streamlit client process."""
+
+    require_configured_ports_available(settings)
 
     uvicorn_process = subprocess.Popen(
         _uvicorn_command(settings)

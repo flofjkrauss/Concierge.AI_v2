@@ -207,6 +207,7 @@ def test_information_symbols_cover_all_hotel_information_topics() -> None:
         "check_out",
         "wifi",
         "breakfast",
+        "pool",
         "pets",
         "parking",
         "room_categories",
