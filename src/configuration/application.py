@@ -64,9 +64,24 @@ class ApplicationSettings(Settings):
     #translation
     conversation_path: Path = project_root / "src" / "conversation"
     translation_model_data_folder: Path = conversation_path / "models" / "translation" / "model_data"
-    #translation_model: Path = translation_model_data_folder / "m2m100_418M"
     translation_model: Path = translation_model_data_folder / "nllb-200-distilled-600M"
+    translation_model_repository: str = "facebook/nllb-200-distilled-600M"
+    translation_model_download_url: str = (
+        "https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/main"
+    )
+    translation_model_files: tuple[str, ...] = (
+        "config.json",
+        "generation_config.json",
+        "pytorch_model.bin",
+        "sentencepiece.bpe.model",
+        "special_tokens_map.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+    )
     language_detector: Path = translation_model_data_folder / "lid.176.bin"
+    language_detector_download_url: str = (
+        "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"
+    )
     # fallback if cuda is not available, check logs to see that
     #translation_processing_unit = "cpu"
     translation_processing_unit = primary_processing_unit
@@ -82,6 +97,20 @@ class ApplicationSettings(Settings):
     intent_processing_unit: str = primary_processing_unit
     intent_detection_model_data_folder: Path = conversation_path / "models" / "intent" / "model_data"
     intent_detection_model: Path = intent_detection_model_data_folder / "intent-classifier"
+    intent_detection_model_repository: str = (
+        "floriankrauss/intent_detector_concierge"
+    )
+    intent_detection_model_download_url: str = (
+        "https://huggingface.co/floriankrauss/intent_detector_concierge/resolve/main"
+    )
+    intent_detection_model_files: tuple[str, ...] = (
+        "config.json",
+        "model.safetensors",
+        "special_tokens_map.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.txt",
+    )
     intent_max_tokens: int = 128
     intent_cache_size: int = 512
 
@@ -89,6 +118,12 @@ class ApplicationSettings(Settings):
     information_processing_unit: str = primary_processing_unit
     information_extraction_model_data_folder: Path = conversation_path / "models" / "information" / "model_data"
     information_extraction_model: Path = information_extraction_model_data_folder / "Qwen3-8B-Q4_K_M.gguf"
+    information_extraction_model_repository: str = "Qwen/Qwen3-8B-GGUF"
+    information_extraction_model_filename: str = "Qwen3-8B-Q4_K_M.gguf"
+    information_extraction_model_download_url: str = (
+        "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/"
+        "Qwen3-8B-Q4_K_M.gguf"
+    )
     information_context_tokens: int = 2048
     information_batch_tokens: int = 512
     information_generation_threads: int = _DEFAULT_INFERENCE_THREADS

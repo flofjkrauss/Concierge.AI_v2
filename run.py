@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from configuration.application import ApplicationSettings
 from configuration.fastapi import FastapiSettings
 from utils.check_port_availability import require_configured_ports_available
+from utils.download_models import ensure_models_available
 from utils.fastapi_lifespan import lifespan
 from utils.import_router import import_router
 from utils.wait_for_api import wait_for_api
@@ -110,6 +111,7 @@ def _start_processes(
 def main() -> None:
     """Supervise the FastAPI application and Streamlit client together."""
     settings = ApplicationSettings.get_settings()
+    ensure_models_available(settings)
     processes: tuple[subprocess.Popen[bytes], ...] = ()
 
     try:

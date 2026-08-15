@@ -56,13 +56,54 @@ flowchart TD
     class CONFIRM,BOUNDARY decision;
 ```
 
-## Streamlit concierge client
+## Installation
 
-Install the project and its client dependency once:
+Concierge.AI_v2 supports Python 3.12 and Python 3.13. Create and activate a
+virtual environment, then install the application from the repository root:
 
 ```shell
 python -m pip install -e .
 ```
+
+For development and tests, install the optional development dependencies:
+
+```shell
+python -m pip install -e ".[dev]"
+```
+
+The editable installation is intentional. The current application loads its
+JSON data, README, favicon, Streamlit entry point, and local model artifacts
+from this source checkout. A non-editable `pip install .` can build and install
+the Python package, but the installed application does not yet relocate those
+runtime files into the environment.
+
+`pyproject.toml` is the single source of truth for Python dependencies. The
+large model artifacts are not Python dependencies and are not included in the
+package. They must be available separately at these project-local paths:
+
+- `src/conversation/models/translation/model_data/nllb-200-distilled-600M/`
+- `src/conversation/models/translation/model_data/lid.176.bin`
+- `src/conversation/models/intent/model_data/intent-classifier/`
+- `src/conversation/models/information/model_data/Qwen3-8B-Q4_K_M.gguf`
+
+When `python run.py` starts, every missing model artifact is downloaded before
+the API and client processes are launched. The same check can be run manually:
+
+```shell
+python -m conversation.models.translation.download_models
+```
+
+Model downloads remain separate from package installation and are stored only
+in the project-local paths listed above.
+
+The default dependency resolves the standard PyPI build of PyTorch. If a CUDA
+build is required, install the matching `torch==2.11.0` build for the target
+system before installing Concierge.AI_v2.
+
+On Windows, `llama-cpp-python` may require a C/C++ build toolchain when pip
+cannot find a compatible pre-built wheel.
+
+## Streamlit concierge client
 
 Start the API and Streamlit client together from the repository root:
 

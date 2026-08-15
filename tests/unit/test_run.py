@@ -133,11 +133,20 @@ def test_main_restarts_both_processes_when_one_exits(
             (second_api, second_client),
         ]
     )
+    ensure_models_available = Mock()
+    monkeypatch.setattr(
+        run_module,
+        "ensure_models_available",
+        ensure_models_available,
+    )
     monkeypatch.setattr(run_module, "_start_processes", start_processes)
     monkeypatch.setattr("run.time.sleep", lambda _: None)
 
     run_module.main()
 
+    ensure_models_available.assert_called_once_with(
+        ApplicationSettings.get_settings()
+    )
     assert start_processes.call_count == 2
     assert first_client.terminated is True
     assert exited_api.waited is True
