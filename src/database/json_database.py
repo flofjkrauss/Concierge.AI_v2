@@ -26,15 +26,13 @@ class JsonDatabase(DatabaseInterface):
         self._bookings_path = data_directory / "bookings.json"
         self._customers_path = data_directory / "customers.json"
         self._hotel_assets_path = data_directory / "hotel_assets.json"
-        self._hotel_information_path = (
-            data_directory / "hotel_information.json"
-        )
+        self._hotel_information_path = data_directory / "hotel_information.json"
         self._lock = RLock()
 
         self._validate_files_exist()
 
     def get_room(self, room_id: str) -> Room | None:
-        """Return one specific room."""        
+        """Return one specific room."""
         with self._lock:
             data = self._read_json(self._hotel_assets_path)
 
@@ -43,7 +41,7 @@ class JsonDatabase(DatabaseInterface):
             if record["room_id"] == room_id:
                 room = self._room_from_record(record=record, currency=hotel_currency)
                 return room
-            
+
         return None
 
     def get_rooms(self) -> list[Room]:
@@ -54,13 +52,15 @@ class JsonDatabase(DatabaseInterface):
 
         hotel_currency = data["hotel"]["currency"]
 
-        return [
-            self._room_from_record(
+        rooms: list[Room] = []
+        for record in data["rooms"]:
+            room = self._room_from_record(
                 record=record,
                 currency=hotel_currency,
             )
-            for record in data["rooms"]
-        ]
+            rooms.append(room)
+
+        return rooms
 
     def get_bookings(self) -> list[Booking]:
         """Return all bookings from the bookings file."""
@@ -68,10 +68,12 @@ class JsonDatabase(DatabaseInterface):
         with self._lock:
             data = self._read_json(self._bookings_path)
 
-        return [
-            self._booking_from_record(record)
-            for record in data["bookings"]
-        ]
+        bookings: list[Booking] = []
+        for record in data["bookings"]:
+            booking = self._booking_from_record(record)
+            bookings.append(booking)
+
+        return bookings
 
     def get_booking(self, booking_id: str) -> Booking | None:
         """Return the booking with the given ID."""
@@ -97,20 +99,15 @@ class JsonDatabase(DatabaseInterface):
             data = self._read_json(self._bookings_path)
             records = data["bookings"]
 
-            existing_index = next(
-                (
-                    index
-                    for index, record in enumerate(records)
-                    if record["booking_id"] == booking.booking_id
-                ),
-                None,
-            )
+            existing_index: int | None = None
+            for index, record in enumerate(records):
+                if record["booking_id"] == booking.booking_id:
+                    existing_index = index
+                    break
 
-            existing_record = (
-                records[existing_index]
-                if existing_index is not None
-                else None
-            )
+            existing_record: dict[str, Any] | None = None
+            if existing_index is not None:
+                existing_record = records[existing_index]
 
             record = self._booking_to_record(
                 booking=booking,
@@ -133,10 +130,12 @@ class JsonDatabase(DatabaseInterface):
         with self._lock:
             data = self._read_json(self._customers_path)
 
-        return [
-            self._customer_from_record(record)
-            for record in data["customers"]
-        ]
+        customers: list[Customer] = []
+        for record in data["customers"]:
+            customer = self._customer_from_record(record)
+            customers.append(customer)
+
+        return customers
 
     def get_customer(self, customer_id: str) -> Customer | None:
         """Return the customer with the given ID."""
@@ -156,20 +155,21 @@ class JsonDatabase(DatabaseInterface):
         return None
 
     def identify_customer(
-            self, first_name: str ,
-            last_name: str,
-            email: str) -> Customer | None:
-         with self._lock:
+        self, first_name: str, last_name: str, email: str
+    ) -> Customer | None:
+        with self._lock:
             data = self._read_json(self._customers_path)
 
             for record in data["customers"]:
-                if all([
-                    (record["first_name"] == first_name),
-                    (record["last_name"] == last_name),
-                    (record["email"] == email)
-                ]):
+                if all(
+                    [
+                        (record["first_name"] == first_name),
+                        (record["last_name"] == last_name),
+                        (record["email"] == email),
+                    ]
+                ):
                     return self.get_customer(record["customer_id"])
-                    
+
             return None
 
     def save_customer(self, customer: Customer) -> None:
@@ -179,20 +179,15 @@ class JsonDatabase(DatabaseInterface):
             data = self._read_json(self._customers_path)
             records = data["customers"]
 
-            existing_index = next(
-                (
-                    index
-                    for index, record in enumerate(records)
-                    if record["customer_id"] == customer.customer_id
-                ),
-                None,
-            )
+            existing_index: int | None = None
+            for index, record in enumerate(records):
+                if record["customer_id"] == customer.customer_id:
+                    existing_index = index
+                    break
 
-            existing_record = (
-                records[existing_index]
-                if existing_index is not None
-                else None
-            )
+            existing_record: dict[str, Any] | None = None
+            if existing_index is not None:
+                existing_record = records[existing_index]
 
             record = self._customer_to_record(
                 customer=customer,
@@ -248,7 +243,7 @@ class JsonDatabase(DatabaseInterface):
         with self._lock:
             data = self._read_json(self._hotel_assets_path)
             address_data = data["hotel"]["address"]
-            return f"{address_data["street"]}, {address_data["postal_code"]} {address_data["city"]}, {address_data["country_code"]}"
+            return f"{address_data['street']}, {address_data['postal_code']} {address_data['city']}, {address_data['country_code']}"
 
     def _room_from_record(
         self,
@@ -257,11 +252,10 @@ class JsonDatabase(DatabaseInterface):
     ) -> Room:
         """Convert a JSON room record into a Room entity."""
 
-        missing_fields = {
-            field
-            for field in ("max_occupancy", "price_per_night")
-            if field not in record
-        }
+        missing_fields: set[str] = set()
+        for field in ("max_occupancy", "price_per_night"):
+            if field not in record:
+                missing_fields.add(field)
 
         if missing_fields:
             missing = ", ".join(sorted(missing_fields))
@@ -284,7 +278,9 @@ class JsonDatabase(DatabaseInterface):
             is_bookable=bool(record["in_service"]),
         )
 
-    def get_booking_by_name(self, last_name: str, email: str, check_in: date) -> Booking | None:
+    def get_booking_by_name(
+        self, last_name: str, email: str, check_in: date
+    ) -> Booking | None:
         """Return the booking with the given last_name email combination."""
 
         with self._lock:
@@ -296,7 +292,7 @@ class JsonDatabase(DatabaseInterface):
                 if record["email"] == email and record["last_name"] == last_name:
                     customer = self._customer_from_record(record=record)
                     break
-            
+
             if not customer:
                 return None
 
@@ -307,7 +303,7 @@ class JsonDatabase(DatabaseInterface):
                         booking = self._booking_from_record(record)
                         if booking.status != BookingStatus.CANCELLED:
                             return booking
-    
+
             return None
 
     def mail_is_in_use(self, email: str) -> bool:
@@ -317,9 +313,8 @@ class JsonDatabase(DatabaseInterface):
             for record in data["customers"]:
                 if record["email"] == email:
                     return True
-            
+
             return False
-        
 
     @staticmethod
     def _booking_from_record(
@@ -342,9 +337,7 @@ class JsonDatabase(DatabaseInterface):
             ),
             status=BookingStatus(record["status"]),
             breakfast_included=bool(record["breakfast"]),
-            accessible_requested=bool(
-                record.get("accessible_requested", False)
-            ),
+            accessible_requested=bool(record.get("accessible_requested", False)),
             created_at=datetime.fromisoformat(record["booked_at"]),
         )
 
@@ -366,23 +359,18 @@ class JsonDatabase(DatabaseInterface):
         cancelled_at: str | None = None
 
         if booking.status == BookingStatus.CANCELLED:
-            existing_cancelled_at = (
-                existing_record.get("cancelled_at")
-                if existing_record is not None
-                else None
-            )
-            cancelled_at = (
-                existing_cancelled_at
-                or datetime.now(UTC).isoformat()
-            )
+            existing_cancelled_at = None
+            if existing_record is not None:
+                existing_cancelled_at = existing_record.get("cancelled_at")
+
+            # Preserve the original cancellation timestamp on repeated saves.
+            cancelled_at = existing_cancelled_at or datetime.now(UTC).isoformat()
 
         return {
             "booking_id": booking.booking_id,
             "customer_id": booking.customer_id,
             "room_id": booking.room_id,
-            "guest_name": (
-                f"{customer.first_name} {customer.last_name}"
-            ),
+            "guest_name": (f"{customer.first_name} {customer.last_name}"),
             "arrival": booking.stay_period.check_in.isoformat(),
             "departure": booking.stay_period.check_out.isoformat(),
             "guests": booking.guest_count,
@@ -420,11 +408,10 @@ class JsonDatabase(DatabaseInterface):
     ) -> dict[str, Any]:
         """Convert a Customer entity into a JSON record."""
 
-        created_at = (
-            existing_record["created_at"]
-            if existing_record is not None
-            else datetime.now(UTC).isoformat()
-        )
+        if existing_record is not None:
+            created_at = existing_record["created_at"]
+        else:
+            created_at = datetime.now(UTC).isoformat()
 
         return {
             "customer_id": customer.customer_id,
@@ -446,17 +433,14 @@ class JsonDatabase(DatabaseInterface):
             self._hotel_information_path,
         )
 
-        missing_files = [
-            path.name
-            for path in required_files
-            if not path.is_file()
-        ]
+        missing_files: list[str] = []
+        for path in required_files:
+            if not path.is_file():
+                missing_files.append(path.name)
 
         if missing_files:
             missing = ", ".join(missing_files)
-            raise FileNotFoundError(
-                f"Missing database files: {missing}"
-            )
+            raise FileNotFoundError(f"Missing database files: {missing}")
 
     @staticmethod
     def _read_json(path: Path) -> dict[str, Any]:
@@ -469,9 +453,7 @@ class JsonDatabase(DatabaseInterface):
             data = json.load(file)
 
         if not isinstance(data, dict):
-            raise TypeError(
-                f"Expected a JSON object in {path}"
-            )
+            raise TypeError(f"Expected a JSON object in {path}")
 
         return data
 
@@ -482,9 +464,7 @@ class JsonDatabase(DatabaseInterface):
     ) -> None:
         """Write a JSON object using an atomic file replacement."""
 
-        temporary_path = path.with_suffix(
-            f"{path.suffix}.tmp"
-        )
+        temporary_path = path.with_suffix(f"{path.suffix}.tmp")
 
         with temporary_path.open(
             mode="w",

@@ -81,9 +81,7 @@ class ConversationController:
             )
         except Exception as error:  # noqa: BLE001
             self._log_failure("Conversation state lookup failed", error)
-            return self._safe_error_response(
-                reason="Conversation state lookup failed"
-            )
+            return self._safe_error_response(reason="Conversation state lookup failed")
 
         if not snapshot.values:
             return self._safe_error_response(reason="Session not found")
@@ -199,7 +197,10 @@ class ConversationController:
         self,
         result: ConversationOutput | object,
     ) -> InteractionResponse:
-        response = result.get("response") if isinstance(result, Mapping) else None
+        response = None
+        if isinstance(result, Mapping):
+            response = result.get("response")
+
         if isinstance(response, InteractionResponse):
             return response
         return self._safe_error_response(

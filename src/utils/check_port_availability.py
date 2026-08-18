@@ -1,4 +1,5 @@
 """Check if the ports configuret in ApplicationSettings are available on this system"""
+
 import errno
 import socket
 import sys
@@ -9,7 +10,9 @@ from configuration.application import ApplicationSettings
 def _reserve_port(host: str, port: int) -> socket.socket:
     """Temporarily reserve one configured server address."""
 
-    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+    family = socket.AF_INET
+    if ":" in host:
+        family = socket.AF_INET6
     reservation = socket.socket(family, socket.SOCK_STREAM)
 
     try:
@@ -52,7 +55,10 @@ def require_configured_ports_available(
     if not failures:
         return
 
-    print("ConciergeAI cannot start because a configured port is unavailable.", file=sys.stderr)
+    print(
+        "ConciergeAI cannot start because a configured port is unavailable.",
+        file=sys.stderr,
+    )
     for service, host, port, bind_error in failures:
         address = f"{host}:{port}"
         if (

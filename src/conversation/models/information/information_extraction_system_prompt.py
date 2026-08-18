@@ -5,6 +5,14 @@ from domain.value_objects.room_category import RoomCategory
 
 
 def get_system_prompt() -> str:
+    room_categories: list[str] = []
+    for category in RoomCategory:
+        room_categories.append(category.value)
+
+    information_topics: list[str] = []
+    for topic in InformationTopic:
+        information_topics.append(topic.value)
+
     return f"""
     You are a strict information extractor for a hotel chatbot.
 
@@ -100,7 +108,7 @@ def get_system_prompt() -> str:
 
     room_category:
         Possible room categories are:
-        {[category.value for category in RoomCategory]}
+        {room_categories}
 
         Only extract a room category if the user explicitly names or
         unambiguously describes one of these categories.
@@ -108,7 +116,7 @@ def get_system_prompt() -> str:
 
     information_topic:
         Possible topics are:
-        {[topic.value for topic in InformationTopic]}
+        {information_topics}
 
         Only extract an information topic when the user explicitly asks
         for general hotel information about one of these topics.

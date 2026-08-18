@@ -34,17 +34,19 @@ def classify_intent(
             detected = Intent.UNKNOWN
 
     if not isinstance(detected, Intent):
+        raw_detected = detected
         try:
-            detected = Intent(detected) if isinstance(detected, str) else Intent.UNKNOWN
+            detected = Intent.UNKNOWN
+            if isinstance(raw_detected, str):
+                detected = Intent(raw_detected)
         except ValueError:
             detected = Intent.UNKNOWN
 
         if detected == Intent.UNKNOWN:
             _safe_log_warning("Intent detector returned an invalid intent")
 
-    if (
-        detected == Intent.BOOKING_REQUEST
-        and not state.get("availability_requested", False)
+    if detected == Intent.BOOKING_REQUEST and not state.get(
+        "availability_requested", False
     ):
         detected = Intent.AVAILABILITY_CHECK
 

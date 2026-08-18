@@ -23,7 +23,9 @@ class DefaultPhrases(StrEnum):
         "Please use the matching first and last name or provide a different "
         "email address."
     )
-    AVAILABLE_ROOM_CATEGORIES = "According to your request, these room categories are available...."
+    AVAILABLE_ROOM_CATEGORIES = (
+        "According to your request, these room categories are available...."
+    )
     NO_VACANCY = "Unfortunately, we have no vacancy in the requested stay period."
     AVAILABILITY_ASK_FOR_DATA = "To offer possible booking options, I need to collect additional data. Please tell me:"
     ASK_CHECK_IN = "When would you like to check in?"
@@ -32,7 +34,9 @@ class DefaultPhrases(StrEnum):
     ASK_ACCESABILITY = "Do you need an accessible room?"
     ASK_NUMBER_GUESTS = "How many people are you?"
     BOOKING_ASK_FOR_DATA = "To complete your booking, I still need some information."
-    CANCELLATION_ASK_FOR_DATA = "To complete your cancellation, I still need some information."
+    CANCELLATION_ASK_FOR_DATA = (
+        "To complete your cancellation, I still need some information."
+    )
     ASK_GUEST_DETAILS = (
         "Please tell me your first and last name and your email address."
     )
@@ -45,9 +49,13 @@ class DefaultPhrases(StrEnum):
     ASK_CONFIRMATION_BOOKING = "Please check the data and confirm your booking request."
     BOOKING_CHECK_ASK_FOR_DATA = "To find your booking I need additional information."
     DISPLAY_BOOKING = "Your booking:"
-    BOOKING_NOT_FOUND = "I could not find any booking that matches the provided informations."
+    BOOKING_NOT_FOUND = (
+        "I could not find any booking that matches the provided informations."
+    )
     REPEAT_ASK_CONFIRMATION = "I am sorry, I was not able to understand you. Did you confirm the last request?"
-    NEED_ANYTHNG_ELSE = "Your request has been processed. Anything else I can help you out with?"
+    NEED_ANYTHNG_ELSE = (
+        "Your request has been processed. Anything else I can help you out with?"
+    )
     GENERIC_ASK_FOR_DATA = (
         "To continue with your request, I still need the following information:"
     )
@@ -67,10 +75,10 @@ class DefaultPhrases(StrEnum):
         "- Policies and local information: payment methods, cancellation policy, "
         "pets, location, local attractions, front desk, and contact details"
     )
-    ABORT_BOOKING_REQUEST = "The reservation process has been cancelled. Anything else I help you with?"
+    ABORT_BOOKING_REQUEST = (
+        "The reservation process has been cancelled. Anything else I help you with?"
+    )
     ABORT_CANCEL_REQUEST = "Cancellation aborted. Your booking remains confirmed. Anything else I help you with?"
-
-
 
 
 def build(
@@ -111,7 +119,9 @@ def build(
             return DefaultPhrases.ASK_INTENT
 
 
-def build_confirmation_declined(intent: Intent, missing_fields: list[InformationField]) -> str:
+def build_confirmation_declined(
+    intent: Intent, missing_fields: list[InformationField]
+) -> str:
     match intent:
         case Intent.BOOKING_CANCELLATION:
             return DefaultPhrases.ABORT_CANCEL_REQUEST
@@ -125,6 +135,7 @@ def build_confirmation_declined(intent: Intent, missing_fields: list[Information
                 extra=to_jsonable({"intent": intent}),
             )
             return DefaultPhrases.GENERIC_ASK_FOR_CONFIRMATION
+
 
 def build_ask_confirmation(
     intent: Intent,
@@ -155,6 +166,7 @@ def build_ask_confirmation(
                 extra=to_jsonable({"intent": intent}),
             )
             return DefaultPhrases.GENERIC_ASK_FOR_CONFIRMATION
+
 
 def build_ask_data(
     intent: Intent,
@@ -200,6 +212,7 @@ def build_ask_data(
 
     return _build_missing_fields_fallback(missing_fields)
 
+
 def build_ask_data_booking_check(
     missing_fields: list[InformationField],
 ) -> str:
@@ -233,6 +246,7 @@ def build_ask_data_cancellation(
 
     return retval + " " + _build_missing_fields_fallback(missing_fields)
 
+
 def build_ask_data_booking_request(
     missing_fields: list[InformationField],
 ) -> str:
@@ -248,14 +262,17 @@ def build_ask_data_booking_request(
     if basic_data != "":
         return retval
 
-    if all(
-        field in missing_fields
-        for field in (
-            InformationField.FIRST_NAME,
-            InformationField.LAST_NAME,
-            InformationField.EMAIL,
-        )
+    guest_details_are_missing = True
+    for field in (
+        InformationField.FIRST_NAME,
+        InformationField.LAST_NAME,
+        InformationField.EMAIL,
     ):
+        if field not in missing_fields:
+            guest_details_are_missing = False
+            break
+
+    if guest_details_are_missing:
         return retval + f" {DefaultPhrases.ASK_GUEST_DETAILS}"
 
     if (
@@ -279,12 +296,16 @@ def build_ask_data_booking_request(
     return retval + " " + _build_missing_fields_fallback(missing_fields)
 
 
-
-def build_ask_data_availability(missing_fields: list[InformationField], called_from_booking: bool=False) -> str:
+def build_ask_data_availability(
+    missing_fields: list[InformationField], called_from_booking: bool = False
+) -> str:
     retval = ""
     if not called_from_booking:
         retval += DefaultPhrases.AVAILABILITY_ASK_FOR_DATA
-    if InformationField.CHECK_IN in missing_fields and InformationField.CHECK_OUT in missing_fields:
+    if (
+        InformationField.CHECK_IN in missing_fields
+        and InformationField.CHECK_OUT in missing_fields
+    ):
         retval += f" {DefaultPhrases.ASK_CHECK_IN_AND_CHECK_OUT}"
         return retval
     if InformationField.CHECK_IN in missing_fields:
@@ -297,6 +318,7 @@ def build_ask_data_availability(missing_fields: list[InformationField], called_f
         return retval + f" {DefaultPhrases.ASK_NUMBER_GUESTS}"
 
     return ""
+
 
 def _build_missing_fields_fallback(
     missing_fields: list[InformationField],
@@ -319,17 +341,12 @@ def _build_missing_fields_fallback(
         InformationField.INFORMATION_TOPIC: "what you would like to know",
     }
 
-    labels = [
-        field_labels.get(
+    labels: list[str] = []
+    for field in missing_fields:
+        label = field_labels.get(
             field,
             field.value.replace("_", " "),
         )
-        for field in missing_fields
-    ]
+        labels.append(label)
 
-    return (
-        f"{DefaultPhrases.GENERIC_ASK_FOR_DATA} "
-        f"{', '.join(labels)}."
-    )
-
-
+    return f"{DefaultPhrases.GENERIC_ASK_FOR_DATA} {', '.join(labels)}."

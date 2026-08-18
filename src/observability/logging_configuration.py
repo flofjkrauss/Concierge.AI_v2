@@ -45,7 +45,11 @@ def configure_logging() -> None:
 
 def _handler_is_configured(logger: logging.Logger) -> bool:
     """Return whether the ConciergeAI file handler already exists."""
-    return any(handler.get_name() == _HANDLER_NAME for handler in logger.handlers)
+    for handler in logger.handlers:
+        if handler.get_name() == _HANDLER_NAME:
+            return True
+
+    return False
 
 
 def _resolve_log_level(level_name: str) -> int:

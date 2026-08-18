@@ -44,9 +44,7 @@ _BOOLEAN_FIELDS = frozenset(
 _INTEGER_FIELDS = frozenset({InformationField.GUEST_COUNT})
 
 _NUMERIC_DATE_PATTERNS = (
-    re.compile(
-        r"(?P<year>\d{4})\s*-\s*(?P<month>\d{1,2})\s*-\s*(?P<day>\d{1,2})"
-    ),
+    re.compile(r"(?P<year>\d{4})\s*-\s*(?P<month>\d{1,2})\s*-\s*(?P<day>\d{1,2})"),
     re.compile(
         r"(?P<day>\d{1,2})\s*[./]\s*(?P<month>\d{1,2})\s*[./]\s*"
         r"(?P<year>\d{4})"
@@ -83,13 +81,15 @@ def extract_information(
     original_message = state.get("parsed_message")
     requested_fields = _open_requested_fields(state)
     requested_field = state.get("next_missing_field")
-    expected_field = (
-        requested_field if requested_field in requested_fields else None
-    )
-    model_expected_field = (
-        expected_field if expected_field in _DATE_FIELDS else None
-    )
+    expected_field = None
+    if requested_field in requested_fields:
+        expected_field = requested_field
 
+    model_expected_field = None
+    if expected_field in _DATE_FIELDS:
+        model_expected_field = expected_field
+
+    # Exact numeric date replies bypass translation and model extraction.
     literal_date = _date_from_original_message(
         expected_field,
         original_message=original_message,
@@ -97,16 +97,16 @@ def extract_information(
     if literal_date is not None:
         return {
             "extracted_information": [literal_date],
-            "original_message_extracted_fields": [
-                literal_date.information_field
-            ],
+            "original_message_extracted_fields": [literal_date.information_field],
         }
 
     original_available = isinstance(original_message, Message)
     use_original_first = original_available and (
         expected_field is not None or state.get("expected_interaction") is not None
     )
-    message = original_message if use_original_first else translated_message
+    message = translated_message
+    if use_original_first:
+        message = original_message
 
     try:
         extracted = context.information_extractor.extract(
@@ -118,20 +118,20 @@ def extract_information(
         _safe_log_exception("Information extraction failed", error)
         valid_information = []
 
+    discard_expected_field = None
+    if use_original_first:
+        discard_expected_field = expected_field
+
     valid_information, original_information_request = (
         _discard_expected_value_for_information_request(
             valid_information,
-            expected_field=expected_field if use_original_first else None,
+            expected_field=discard_expected_field,
         )
     )
-    original_fields = (
-        {
-            information.information_field
-            for information in valid_information
-        }
-        if use_original_first
-        else set()
-    )
+    original_fields: set[InformationField] = set()
+    if use_original_first:
+        for information in valid_information:
+            original_fields.add(information.information_field)
 
     if original_information_request:
         return _extraction_update(valid_information, original_fields)
@@ -163,14 +163,15 @@ def extract_information(
         requested_fields=requested_fields,
         literal_emails=literal_emails,
     )
-    if (
-        InformationField.EMAIL in requested_fields
-        and any(
-            information.information_field == InformationField.EMAIL
-            for information in valid_information
-        )
-    ):
-        original_fields.add(InformationField.EMAIL)
+    if InformationField.EMAIL in requested_fields:
+        extracted_email = False
+        for information in valid_information:
+            if information.information_field == InformationField.EMAIL:
+                extracted_email = True
+                break
+        if extracted_email:
+            original_fields.add(InformationField.EMAIL)
+
     missing_fields = _missing_requested_fields(
         requested_fields,
         valid_information,
@@ -179,7 +180,9 @@ def extract_information(
     if not missing_fields:
         return _extraction_update(valid_information, original_fields)
 
-    fallback_message = translated_message if use_original_first else original_message
+    fallback_message = original_message
+    if use_original_first:
+        fallback_message = translated_message
     fallback_is_original = not use_original_first
 
     try:
@@ -193,26 +196,27 @@ def extract_information(
         return _extraction_update(valid_information, original_fields)
 
     accepted_fields = _candidate_fields(missing_fields)
-    primary_fields = {
-        information.information_field for information in valid_information
-    }
-    fallback_information = [
-        information
-        for information in fallback_information
-        if information.information_field in accepted_fields
-        and information.information_field not in primary_fields
-        and _is_authoritative_email(information, literal_emails)
-    ]
+    primary_fields: set[InformationField] = set()
+    for information in valid_information:
+        primary_fields.add(information.information_field)
+
+    accepted_fallback_information: list[Information] = []
+    for information in fallback_information:
+        if (
+            information.information_field in accepted_fields
+            and information.information_field not in primary_fields
+            and _is_authoritative_email(information, literal_emails)
+        ):
+            accepted_fallback_information.append(information)
+    fallback_information = accepted_fallback_information
 
     valid_information = _merge_information(
         valid_information,
         fallback_information,
     )
     if fallback_is_original:
-        original_fields.update(
-            information.information_field
-            for information in fallback_information
-        )
+        for information in fallback_information:
+            original_fields.add(information.information_field)
     return _extraction_update(valid_information, original_fields)
 
 
@@ -253,11 +257,11 @@ def _extraction_update(
 ) -> StateUpdate:
     update: StateUpdate = {"extracted_information": extracted}
     if original_fields:
-        update["original_message_extracted_fields"] = [
-            information.information_field
-            for information in extracted
-            if information.information_field in original_fields
-        ]
+        extracted_original_fields: list[InformationField] = []
+        for information in extracted:
+            if information.information_field in original_fields:
+                extracted_original_fields.append(information.information_field)
+        update["original_message_extracted_fields"] = extracted_original_fields
     return update
 
 
@@ -268,21 +272,21 @@ def _discard_expected_value_for_information_request(
 ) -> tuple[list[Information], bool]:
     """Keep an information question from becoming a booking-field answer."""
 
-    information_request = any(
-        information.information_field == InformationField.INFORMATION_TOPIC
-        for information in extracted
-    )
+    information_request = False
+    for information in extracted:
+        if information.information_field == InformationField.INFORMATION_TOPIC:
+            information_request = True
+            break
+
     if expected_field is None or not information_request:
         return extracted, False
 
-    return (
-        [
-            information
-            for information in extracted
-            if information.information_field != expected_field
-        ],
-        True,
-    )
+    filtered_information: list[Information] = []
+    for information in extracted:
+        if information.information_field != expected_field:
+            filtered_information.append(information)
+
+    return filtered_information, True
 
 
 def _integer_from_original_message(
@@ -310,10 +314,11 @@ def _integer_from_original_message(
 
 
 def _literal_emails(content: str) -> dict[str, str]:
-    return {
-        match.group(0).casefold(): match.group(0)
-        for match in _EMAIL_LITERAL_PATTERN.finditer(content)
-    }
+    literal_emails: dict[str, str] = {}
+    for match in _EMAIL_LITERAL_PATTERN.finditer(content):
+        literal_email = match.group(0)
+        literal_emails[literal_email.casefold()] = literal_email
+    return literal_emails
 
 
 def _apply_original_email_authority(
@@ -325,9 +330,9 @@ def _apply_original_email_authority(
     if InformationField.EMAIL not in requested_fields:
         return extracted
 
-    by_field = {
-        information.information_field: information for information in extracted
-    }
+    by_field: dict[InformationField, Information] = {}
+    for information in extracted:
+        by_field[information.information_field] = information
     translated_email = by_field.get(InformationField.EMAIL)
 
     if translated_email is not None and isinstance(translated_email.content, str):
@@ -355,15 +360,17 @@ def _missing_requested_fields(
     requested_fields: frozenset[InformationField],
     extracted: list[Information],
 ) -> frozenset[InformationField]:
-    extracted_fields = {
-        information.information_field for information in extracted
-    }
+    extracted_fields: set[InformationField] = set()
+    for information in extracted:
+        extracted_fields.add(information.information_field)
 
-    return frozenset(
-        field
-        for field in requested_fields
-        if not _candidate_fields(frozenset({field})) & extracted_fields
-    )
+    missing_fields: set[InformationField] = set()
+    for field in requested_fields:
+        candidate_fields = _candidate_fields(frozenset({field}))
+        if not candidate_fields & extracted_fields:
+            missing_fields.add(field)
+
+    return frozenset(missing_fields)
 
 
 def _candidate_fields(
@@ -395,7 +402,9 @@ def _merge_information(
     primary: list[Information],
     fallback: list[Information],
 ) -> list[Information]:
-    by_field = {information.information_field: information for information in primary}
+    by_field: dict[InformationField, Information] = {}
+    for information in primary:
+        by_field[information.information_field] = information
     for information in fallback:
         by_field[information.information_field] = information
     return list(by_field.values())

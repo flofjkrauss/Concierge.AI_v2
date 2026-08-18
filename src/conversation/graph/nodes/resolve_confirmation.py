@@ -27,9 +27,7 @@ def resolve_confirmation(
     if expected is None:
         raise ValueError("No confirmation is pending")
 
-    decision = _confirmation_decision(
-        state.get("extracted_information", [])
-    )
+    decision = _confirmation_decision(state.get("extracted_information", []))
 
     if expected.kind == ExpectedInteractionKind.INFORMATION_CHANGE_CONFIRMATION:
         pending_changes = dict(state.get("pending_information_changes", {}))
@@ -48,25 +46,22 @@ def resolve_confirmation(
 
         if decision is False:
             existing_information = state.get("collected_information", {})
-            additions = {
-                field: information
-                for field, information in pending_changes.items()
-                if field not in existing_information
-            }
-            explicit_revisions = {
-                information.information_field: information
-                for information in state.get(
-                    "extracted_information",
-                    [],
-                )
+            additions = {}
+            for field, information in pending_changes.items():
+                if field not in existing_information:
+                    additions[field] = information
+
+            explicit_revisions = {}
+            for information in state.get("extracted_information", []):
                 if (
                     information.information_field
                     in IntentInformationMapper.determine_fields(expected.intent)
                     and information.information_field in existing_information
                     and existing_information[information.information_field].content
                     != information.content
-                )
-            }
+                ):
+                    explicit_revisions[information.information_field] = information
+
             accepted_changes = additions | explicit_revisions
             valid_changes, _ = _plausible_information(
                 list(accepted_changes.values()),
@@ -82,10 +77,10 @@ def resolve_confirmation(
                 ),
             }
             if valid_changes:
-                decline_updates["collected_information"] = {
-                    information.information_field: information
-                    for information in valid_changes
-                }
+                collected_information = {}
+                for information in valid_changes:
+                    collected_information[information.information_field] = information
+                decline_updates["collected_information"] = collected_information
             return decline_updates
 
         detected_intent = state.get("detected_intent") or Intent.UNKNOWN

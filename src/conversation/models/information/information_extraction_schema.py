@@ -6,6 +6,14 @@ from domain.value_objects.room_category import RoomCategory
 
 
 def get_information_extraction_schema() -> dict[str, object]:
+    information_topics: list[str] = []
+    for topic in InformationTopic:
+        information_topics.append(topic.value)
+
+    room_categories: list[str] = []
+    for category in RoomCategory:
+        room_categories.append(category.value)
+
     return {
         "type": "object",
         "properties": {
@@ -26,11 +34,11 @@ def get_information_extraction_schema() -> dict[str, object]:
             "accessible": {"type": "boolean"},
             "information_topic": {
                 "type": "string",
-                "enum": [topic.value for topic in InformationTopic],
+                "enum": information_topics,
             },
             "room_category": {
                 "type": "string",
-                "enum": [category.value for category in RoomCategory],
+                "enum": room_categories,
             },
             "confirmation": {
                 "type": "string",

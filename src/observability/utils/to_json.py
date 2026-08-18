@@ -53,40 +53,51 @@ def to_jsonable(value: Any) -> Any:
             "information_id": to_jsonable(value.information_id),
         }
 
-    # Convert a list of Information entities into a field-indexed dictionary.
-    if isinstance(value, list) and all(
-        isinstance(item, Information) for item in value
-    ):
-        return {
-            item.information_field.value: to_jsonable(item)
-            for item in value
-        }
+    if isinstance(value, list):
+        contains_only_information = True
+        for item in value:
+            if not isinstance(item, Information):
+                contains_only_information = False
+                break
 
-    # Convert a list of conversation messages into a field-indexed dictionary.
-    if isinstance(value, list) and all(
-        isinstance(item, ConversationMessage) for item in value
-    ):
-        return {
-            f"{index}": to_jsonable(item)
-            for index, item in enumerate(value)
-        }
+        # Information lists use their semantic field names as JSON keys.
+        if contains_only_information:
+            information_by_field: dict[str, Any] = {}
+            for item in value:
+                information_by_field[item.information_field.value] = to_jsonable(item)
+            return information_by_field
+
+        contains_only_messages = True
+        for item in value:
+            if not isinstance(item, ConversationMessage):
+                contains_only_messages = False
+                break
+
+        # Message lists retain their order through stable numeric keys.
+        if contains_only_messages:
+            messages_by_index: dict[str, Any] = {}
+            for index, item in enumerate(value):
+                messages_by_index[str(index)] = to_jsonable(item)
+            return messages_by_index
 
     if isinstance(value, Mapping):
-        return {
-            str(to_jsonable(key)): to_jsonable(item)
-            for key, item in value.items()
-        }
+        json_mapping: dict[str, Any] = {}
+        for key, item in value.items():
+            json_key = str(to_jsonable(key))
+            json_mapping[json_key] = to_jsonable(item)
+        return json_mapping
 
     if isinstance(value, list | tuple | set | frozenset):
-        return [
-            to_jsonable(item)
-            for item in value
-        ]
+        json_items: list[Any] = []
+        for item in value:
+            json_items.append(to_jsonable(item))
+        return json_items
 
     if is_dataclass(value) and not isinstance(value, type):
-        return {
-            field.name: to_jsonable(getattr(value, field.name))
-            for field in fields(value)
-        }
+        json_fields: dict[str, Any] = {}
+        for field in fields(value):
+            field_value = getattr(value, field.name)
+            json_fields[field.name] = to_jsonable(field_value)
+        return json_fields
 
     return repr(value)

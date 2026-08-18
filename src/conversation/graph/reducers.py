@@ -22,7 +22,9 @@ def merge_messages[MessageEntry: IdentifiedMessage](
     """Append new messages and replace entries with an existing message ID."""
 
     merged = list(current or ())
-    positions = {entry.message_id: index for index, entry in enumerate(merged)}
+    positions: dict[str, int] = {}
+    for index, entry in enumerate(merged):
+        positions[entry.message_id] = index
 
     for entry in updates or ():
         existing_index = positions.get(entry.message_id)

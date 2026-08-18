@@ -26,6 +26,7 @@ _TRANSLATION_CACHE_SIZE = _SETTINGS.translation_cache_size
 class UnsupportedLanguageError(ValueError):
     """Raised when M2M100 cannot translate a requested language."""
 
+
 class M2M100Translator(TranslatorInterface):
     """Translate locally with M2M100 and detect languages with fastText."""
 
@@ -82,13 +83,13 @@ class M2M100Translator(TranslatorInterface):
                 return self._cache[cache_key]
 
             self._tokenizer.src_lang = source_lang
-            model_inputs = {
-                key: value.to(_PROCESSING_UNIT)
-                for key, value in self._tokenizer(
-                    content,
-                    return_tensors="pt",
-                ).items()
-            }
+            tokenized_inputs = self._tokenizer(
+                content,
+                return_tensors="pt",
+            )
+            model_inputs: dict[str, torch.Tensor] = {}
+            for key, value in tokenized_inputs.items():
+                model_inputs[key] = value.to(_PROCESSING_UNIT)
             generated_tokens = self._model.generate(
                 **model_inputs,
                 forced_bos_token_id=self._tokenizer.get_lang_id(target_lang),

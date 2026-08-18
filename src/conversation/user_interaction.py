@@ -84,7 +84,7 @@ class UserInteraction:
             Action.DISPLAY_GREETING: self.display_greeting,
             Action.DISPLAY_INFO: self.display_info,
             Action.ASK_INTENT: self.ask_intent,
-            Action.CONFIRMATION_DECLINED: self.ask_further_intent
+            Action.CONFIRMATION_DECLINED: self.ask_further_intent,
         }
 
         try:
@@ -171,11 +171,10 @@ class UserInteraction:
 
         for field, values in data.items():
             try:
-                normalized_field = (
-                    field
-                    if isinstance(field, InformationField)
-                    else InformationField(field)
-                )
+                if isinstance(field, InformationField):
+                    normalized_field = field
+                else:
+                    normalized_field = InformationField(field)
             except (TypeError, ValueError):
                 raise TypeError(
                     "Invalid information-change confirmation data"
@@ -186,26 +185,19 @@ class UserInteraction:
                 or isinstance(values, (str, bytes))
                 or len(values) != 2
             ):
-                raise TypeError(
-                    "Invalid information-change confirmation data"
-                )
+                raise TypeError("Invalid information-change confirmation data")
 
             old_value, new_value = values
             label = normalized_field.value.replace("_", " ")
             replacements.append(
-                f"{label}: {_display_value(old_value)} to "
-                f"{_display_value(new_value)}"
+                f"{label}: {_display_value(old_value)} to {_display_value(new_value)}"
             )
 
         if len(replacements) == 1:
-            text = (
-                "Should the existing value be replaced? "
-                f"{replacements[0]}."
-            )
+            text = f"Should the existing value be replaced? {replacements[0]}."
         else:
             text = (
-                "Should these existing values be replaced? "
-                f"{'; '.join(replacements)}."
+                f"Should these existing values be replaced? {'; '.join(replacements)}."
             )
 
         return InteractionResponse(
@@ -395,25 +387,21 @@ class UserInteraction:
         )
 
     def ask_further_intent(
-            self,
-            intent: Intent,
-            data: object,
+        self,
+        intent: Intent,
+        data: object,
     ) -> InteractionResponse:
         """After a declined confirmation, ask for a new intent"""
-        text = build(
-            Action.CONFIRMATION_DECLINED,
-            intent=intent,
-            missing_fields=[]
-        )
-        return InteractionResponse(
-            session_active=True,
-            text=text
-        )
+        text = build(Action.CONFIRMATION_DECLINED, intent=intent, missing_fields=[])
+        return InteractionResponse(session_active=True, text=text)
 
 
 def _display_value(value: object) -> str:
     if isinstance(value, bool):
-        return "yes" if value else "no"
+        if value:
+            return "yes"
+        return "no"
+
     if isinstance(value, date):
         return value.isoformat()
     return str(value)

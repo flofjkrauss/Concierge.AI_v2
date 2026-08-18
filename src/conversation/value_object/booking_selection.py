@@ -29,7 +29,10 @@ class BookingSelection:
     def to_wire(self) -> str:
         """Serialize this client action into a compact validated message."""
 
-        accessible = "true" if self.accessible else "false"
+        accessible = "false"
+        if self.accessible:
+            accessible = "true"
+
         return "|".join(
             (
                 _WIRE_PREFIX,

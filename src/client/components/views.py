@@ -29,7 +29,10 @@ CATEGORY_LABELS = {
     "deluxe": "Deluxe Room",
     "family": "Family Room",
 }
-CATEGORY_IMAGES = {category: f"room-{category}.svg" for category in CATEGORY_LABELS}
+CATEGORY_IMAGES: dict[str, str] = {}
+for category in CATEGORY_LABELS:
+    CATEGORY_IMAGES[category] = f"room-{category}.svg"
+
 ROOM_IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".webp", ".svg")
 INFORMATION_TOPIC_SYMBOLS = {
     "check_in": "↘",
@@ -197,19 +200,25 @@ def render_transcript(
     selected: Shortcut | None = None
     assistant_avatar = _svg_data_uri(asset_dir / "harbour-light-mark.svg")
     guest_avatar = _svg_data_uri(asset_dir / "guest-avatar.svg")
-    latest_message_id = messages[-1].message_id if messages else None
+    latest_message_id = None
+    if messages:
+        latest_message_id = messages[-1].message_id
 
     for entry in messages:
-        avatar = assistant_avatar if entry.role == "assistant" else guest_avatar
+        avatar = guest_avatar
+        if entry.role == "assistant":
+            avatar = assistant_avatar
+
         with st.chat_message(entry.role, avatar=avatar):
             response = entry.response
-            information = (
-                InformationCardData.from_wire_text(entry.text)
-                if entry.role == "assistant"
+            information = None
+            if (
+                entry.role == "assistant"
                 and response is not None
                 and response.kind is ResponseKind.MESSAGE
-                else None
-            )
+            ):
+                information = InformationCardData.from_wire_text(entry.text)
+
             if information is not None:
                 action = render_information_card(
                     information,
@@ -222,10 +231,7 @@ def render_transcript(
             if response is None:
                 continue
 
-            unconsumed = (
-                actions_enabled
-                and entry.message_id not in consumed_actions
-            )
+            unconsumed = actions_enabled and entry.message_id not in consumed_actions
             actionable = unconsumed and (
                 response.kind is ResponseKind.AVAILABILITY
                 or entry.message_id == latest_message_id
@@ -330,8 +336,9 @@ def _render_information_topics_card(
         st.markdown(header, unsafe_allow_html=True)
         columns = st.columns(2, gap="small")
         for index, (group_title, topics) in enumerate(INFORMATION_TOPIC_GROUPS):
-            with columns[index % len(columns)], st.container(
-                key=f"information_topic_group_{message_id}_{index}"
+            with (
+                columns[index % len(columns)],
+                st.container(key=f"information_topic_group_{message_id}_{index}"),
             ):
                 st.markdown(f"##### {group_title}")
                 selection_key = f"information_topic_{message_id}_{index}"
@@ -357,11 +364,10 @@ def _render_information_topics_card(
         return None
 
     title = INFORMATION_TOPIC_TITLES[selected_topic]
+    # Topic cards stay reusable, so their actions are never marked consumed.
     return Shortcut(
         visible_text=f"Tell me about {title}",
-        api_text=InformationTopicSelection(
-            InformationTopic(selected_topic)
-        ).to_wire(),
+        api_text=InformationTopicSelection(InformationTopic(selected_topic)).to_wire(),
         source_message_id=None,
     )
 
@@ -392,11 +398,9 @@ def _render_room_cards(
         return None
 
     raw_request = response.availability_request()
-    request = (
-        AvailabilitySelectionData.from_mapping(raw_request)
-        if raw_request is not None
-        else None
-    )
+    request = None
+    if raw_request is not None:
+        request = AvailabilitySelectionData.from_mapping(raw_request)
 
     selected: Shortcut | None = None
     with st.container(key=f"room_grid_{message_id}"):
@@ -452,7 +456,9 @@ def _room_details(room: dict[str, object]) -> list[str]:
     details: list[str] = []
     occupancy = room.get("max_occupancy")
     if isinstance(occupancy, int):
-        guest_label = "guest" if occupancy == 1 else "guests"
+        guest_label = "guests"
+        if occupancy == 1:
+            guest_label = "guest"
         details.append(f"Up to {occupancy} {guest_label}")
 
     if room.get("breakfast_included") is True or room.get("breakfast") is True:
@@ -474,7 +480,10 @@ def _room_price_html(nightly_price: str | None, stay_total: str | None) -> str:
     primary_price = nightly_price or stay_total
     if primary_price is None:
         return ""
-    primary_label = "Nightly rate" if nightly_price is not None else "Stay total"
+    primary_label = "Stay total"
+    if nightly_price is not None:
+        primary_label = "Nightly rate"
+
     suffix = '<span class="harbour-room-price__suffix">per night</span>'
     if nightly_price is None:
         suffix = ""
@@ -521,24 +530,39 @@ def _render_confirmation(
     booking = BookingCardData.from_mapping(data)
     destructive = booking is not None and booking.is_cancellation_candidate
     if booking is not None:
+        booking_title = "Booking preview"
+        booking_eyebrow = "Ready to confirm"
+        if destructive:
+            booking_title = "Booking to cancel"
+            booking_eyebrow = "Please review"
+
         _render_booking_card(
             booking,
-            title="Booking to cancel" if destructive else "Booking preview",
-            eyebrow="Please review" if destructive else "Ready to confirm",
+            title=booking_title,
+            eyebrow=booking_eyebrow,
             destructive=destructive,
         )
 
-    primary_label = "Cancel booking" if destructive else "Book room"
-    secondary_label = "Keep booking" if destructive else "Not now"
-    primary_visible = "Cancel this booking" if destructive else "Book this room"
-    secondary_visible = "Keep my booking" if destructive else "Not now"
+    primary_label = "Book room"
+    secondary_label = "Not now"
+    primary_visible = "Book this room"
+    secondary_visible = "Not now"
+    primary_key_prefix = "book_room"
+    primary_type = "primary"
+    if destructive:
+        primary_label = "Cancel booking"
+        secondary_label = "Keep booking"
+        primary_visible = "Cancel this booking"
+        secondary_visible = "Keep my booking"
+        primary_key_prefix = "cancel_booking"
+        primary_type = "secondary"
 
     primary_column, secondary_column = st.columns(2, gap="small")
     with primary_column:
         clicked_primary = st.button(
             primary_label,
-            key=f"{'cancel_booking' if destructive else 'book_room'}_{message_id}",
-            type="secondary" if destructive else "primary",
+            key=f"{primary_key_prefix}_{message_id}",
+            type=primary_type,
             disabled=not actionable,
             width="stretch",
         )
@@ -566,10 +590,16 @@ def _render_booking_details(response: ConversationResponse) -> None:
     if booking is None:
         return
     cancelled = booking.status == "cancelled"
+    title = "Your booking"
+    eyebrow = "Booking details"
+    if cancelled:
+        title = "Cancelled booking"
+        eyebrow = "Cancellation complete"
+
     _render_booking_card(
         booking,
-        title="Cancelled booking" if cancelled else "Your booking",
-        eyebrow="Cancellation complete" if cancelled else "Booking details",
+        title=title,
+        eyebrow=eyebrow,
         destructive=cancelled,
     )
 
@@ -592,24 +622,32 @@ def _render_booking_card(
     )
     dates = _date_range(booking.check_in, booking.check_out)
     total = _format_money(booking.total_price)
-    guest_count = (
-        f"{booking.guest_count} {'guest' if booking.guest_count == 1 else 'guests'}"
-        if booking.guest_count is not None
-        else None
-    )
+    guest_count = None
+    if booking.guest_count is not None:
+        guest_label = "guests"
+        if booking.guest_count == 1:
+            guest_label = "guest"
+        guest_count = f"{booking.guest_count} {guest_label}"
 
     facts = [
         _booking_fact("Stay", dates),
         _booking_fact("Guests", guest_count),
         _booking_fact("Total", total),
     ]
-    contact_parts = [
-        part for part in (booking.guest_name, booking.email, booking.phone) if part
-    ]
-    hotel_parts = [
-        part for part in (booking.hotel_name, booking.hotel_address) if part
-    ]
-    reference = f"Reference {booking.booking_id}" if booking.booking_id else None
+    contact_parts: list[str] = []
+    for part in (booking.guest_name, booking.email, booking.phone):
+        if part:
+            contact_parts.append(part)
+
+    hotel_parts: list[str] = []
+    for part in (booking.hotel_name, booking.hotel_address):
+        if part:
+            hotel_parts.append(part)
+
+    reference = None
+    if booking.booking_id:
+        reference = f"Reference {booking.booking_id}"
+
     modifiers: list[str] = []
     if destructive:
         modifiers.append("harbour-booking-card--danger")
@@ -617,12 +655,25 @@ def _render_booking_card(
         modifiers.append("harbour-booking-card--confirmed")
     if status_key == "cancelled":
         modifiers.append("harbour-booking-card--cancelled")
-    modifier = "".join(f" {name}" for name in modifiers)
-    facts_html = "".join(fact for fact in facts if fact)
+
+    modifier_parts: list[str] = []
+    for name in modifiers:
+        modifier_parts.append(f" {name}")
+    modifier = "".join(modifier_parts)
+
+    visible_facts: list[str] = []
+    for fact in facts:
+        if fact:
+            visible_facts.append(fact)
+    facts_html = "".join(visible_facts)
+
     amenities_html = _booking_amenities_html(booking)
     contact_html = _booking_customer_html(contact_parts)
+    hotel_line = None
+    if hotel_parts:
+        hotel_line = " · ".join(hotel_parts)
     hotel_html = _optional_line(
-        " · ".join(hotel_parts) if hotel_parts else None,
+        hotel_line,
         "harbour-booking-card__hotel",
     )
     status_symbol = {"confirmed": "✓", "cancelled": "✕", "pending": "◷"}.get(
@@ -641,28 +692,28 @@ def _render_booking_card(
         f'<section class="harbour-booking-card{modifier}" '
         f'aria-label="{escape(title)}: {escape(status)}">'
         '<div class="harbour-booking-card__header">'
-        '<div>'
+        "<div>"
         f'<span class="harbour-booking-card__eyebrow">{escape(eyebrow)}</span>'
-        f'<h4>{escape(title)}</h4>'
-        '</div>'
+        f"<h4>{escape(title)}</h4>"
+        "</div>"
         '<span class="harbour-booking-card__status">'
         f'<span aria-hidden="true">{status_symbol}</span>{escape(status)}'
         "</span>"
-        '</div>'
+        "</div>"
         '<div class="harbour-booking-card__room">'
         '<span class="harbour-booking-card__anchor" aria-hidden="true">✦</span>'
         '<div class="harbour-booking-card__room-copy">'
         '<div class="harbour-booking-card__room-title">'
-        f'<strong>{escape(room_label)}</strong>{amenities_html}'
+        f"<strong>{escape(room_label)}</strong>{amenities_html}"
         "</div>"
-        f'{_optional_line(reference, "harbour-booking-card__reference")}'
-        '</div>'
-        '</div>'
+        f"{_optional_line(reference, 'harbour-booking-card__reference')}"
+        "</div>"
+        "</div>"
         f'<dl class="harbour-booking-card__facts">{facts_html}</dl>'
         f"{cancelled_notice}"
         f"{contact_html}"
         f"{hotel_html}"
-        '</section>'
+        "</section>"
     )
     st.markdown(card, unsafe_allow_html=True)
 
@@ -690,7 +741,7 @@ def _booking_amenities_html(
     return (
         '<span class="harbour-booking-card__amenities" '
         'aria-label="Requested amenities">'
-        f'{"".join(icons)}'
+        f"{''.join(icons)}"
         "</span>"
     )
 
@@ -713,12 +764,7 @@ def _date_range(check_in: str | None, check_out: str | None) -> str | None:
 def _booking_fact(label: str, value: str | None) -> str:
     if value is None:
         return ""
-    return (
-        '<div>'
-        f'<dt>{escape(label)}</dt>'
-        f'<dd>{escape(value)}</dd>'
-        '</div>'
-    )
+    return f"<div><dt>{escape(label)}</dt><dd>{escape(value)}</dd></div>"
 
 
 def _optional_line(value: str | None, class_name: str) -> str:

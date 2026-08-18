@@ -178,9 +178,11 @@ class BookingCardData:
         last_name = _string_field(data, "last_name")
         guest_name = _string_field(data, "guest_name")
         if guest_name is None:
-            guest_name = " ".join(
-                part for part in (first_name, last_name) if part is not None
-            ) or None
+            name_parts: list[str] = []
+            for part in (first_name, last_name):
+                if part is not None:
+                    name_parts.append(part)
+            guest_name = " ".join(name_parts) or None
 
         return cls(
             booking_id=_string_field(data, "booking_id"),
@@ -203,7 +205,10 @@ class BookingCardData:
     def is_cancellation_candidate(self) -> bool:
         """Return whether a confirmation concerns an existing booking."""
 
-        normalized_status = self.status.casefold() if self.status is not None else None
+        normalized_status = None
+        if self.status is not None:
+            normalized_status = self.status.casefold()
+
         return self.booking_id is not None or normalized_status in {
             "confirmed",
             "cancelled",
@@ -223,17 +228,23 @@ def _field(data: dict[str, object], *names: str) -> object | None:
 
 def _string_field(data: dict[str, object], *names: str) -> str | None:
     value = _field(data, *names)
-    return value.strip() if isinstance(value, str) and value.strip() else None
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
 
 
 def _integer_field(data: dict[str, object], *names: str) -> int | None:
     value = _field(data, *names)
-    return value if isinstance(value, int) and not isinstance(value, bool) else None
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return None
 
 
 def _boolean_field(data: dict[str, object], *names: str) -> bool | None:
     value = _field(data, *names)
-    return value if isinstance(value, bool) else None
+    if isinstance(value, bool):
+        return value
+    return None
 
 
 def _mapping_field(
@@ -241,4 +252,6 @@ def _mapping_field(
     *names: str,
 ) -> dict[str, object] | None:
     value = _field(data, *names)
-    return cast(dict[str, object], value) if isinstance(value, dict) else None
+    if isinstance(value, dict):
+        return cast(dict[str, object], value)
+    return None

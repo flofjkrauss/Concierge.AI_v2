@@ -26,10 +26,9 @@ def activate_intent(
     changed_fields = set(state.get("changed_fields", []))
 
     requested_fields = _open_requested_fields(state)
-    extracted_fields = {
-        information.information_field
-        for information in state.get("extracted_information", [])
-    }
+    extracted_fields: set[InformationField] = set()
+    for information in state.get("extracted_information", []):
+        extracted_fields.add(information.information_field)
 
     if requested_fields & extracted_fields:
         return {
@@ -69,10 +68,14 @@ def activate_intent(
                 }
             )
 
-        if detected in {
-            Intent.BOOKING_CHECK,
-            Intent.BOOKING_CANCELLATION,
-        } and starts_new_intent:
+        if (
+            detected
+            in {
+                Intent.BOOKING_CHECK,
+                Intent.BOOKING_CANCELLATION,
+            }
+            and starts_new_intent
+        ):
             last_booking_check_in = state.get("last_booking_check_in")
             if (
                 InformationField.CHECK_IN not in extracted_fields

@@ -74,7 +74,9 @@ class ConversationResponse:
         """Return the public conversation identifier from a greeting."""
 
         value = self.payload.get("session_id")
-        return value if isinstance(value, str) else None
+        if isinstance(value, str):
+            return value
+        return None
 
     def rooms(self) -> list[dict[str, object]]:
         """Return structured room-category options when present."""
@@ -85,11 +87,12 @@ class ConversationResponse:
         raw_rooms = content.get("rooms")
         if not isinstance(raw_rooms, list):
             return []
-        return [
-            cast(dict[str, object], room)
-            for room in raw_rooms
-            if isinstance(room, dict)
-        ]
+
+        rooms: list[dict[str, object]] = []
+        for room in raw_rooms:
+            if isinstance(room, dict):
+                rooms.append(cast(dict[str, object], room))
+        return rooms
 
     def availability_request(self) -> dict[str, object] | None:
         """Return the criteria attached to one availability result."""
@@ -98,13 +101,17 @@ class ConversationResponse:
         if not isinstance(content, dict):
             return None
         request = content.get("request")
-        return cast(dict[str, object], request) if isinstance(request, dict) else None
+        if isinstance(request, dict):
+            return cast(dict[str, object], request)
+        return None
 
     def structured_data(self, field: str) -> dict[str, object] | None:
         """Return one mapping-valued response field."""
 
         value = self.payload.get(field)
-        return cast(dict[str, object], value) if isinstance(value, dict) else None
+        if isinstance(value, dict):
+            return cast(dict[str, object], value)
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,7 +144,7 @@ class ConversationApi:
         """Build the client from one optional deployment-specific URL."""
 
         # uncomment so enable base URL settings from environment
-        #return cls(os.getenv(API_URL_ENV, DEFAULT_API_URL))
+        # return cls(os.getenv(API_URL_ENV, DEFAULT_API_URL))
         return cls(DEFAULT_API_URL)
 
     def initialize(self) -> ConversationResponse:

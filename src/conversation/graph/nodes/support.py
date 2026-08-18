@@ -294,11 +294,16 @@ def _is_valid_match_response(value: object) -> bool:
         return False
     if value.request is not None and not _is_valid_booking_request(value.request):
         return False
-    return (
-        isinstance(value.rooms, list)
-        and len(value.rooms) <= _MAX_DOMAIN_ROOMS
-        and all(_is_valid_room(room) for room in value.rooms)
-    )
+    if not isinstance(value.rooms, list):
+        return False
+    if len(value.rooms) > _MAX_DOMAIN_ROOMS:
+        return False
+
+    for room in value.rooms:
+        if not _is_valid_room(room):
+            return False
+
+    return True
 
 
 def _is_valid_booking_response(value: object) -> bool:
@@ -409,14 +414,11 @@ def _confirmation_decision(
 ) -> bool | None:
     """Read the extractor's language-neutral confirmation value."""
 
-    confirmation = next(
-        (
-            information
-            for information in extracted
-            if information.information_field == InformationField.CONFIRMATION
-        ),
-        None,
-    )
+    confirmation = None
+    for information in extracted:
+        if information.information_field == InformationField.CONFIRMATION:
+            confirmation = information
+            break
 
     if confirmation is None:
         return None
@@ -513,8 +515,9 @@ def _mentioned_information_topic(content: str) -> InformationTopic | None:
     )
 
     for topic, topic_aliases in aliases:
-        if any(alias in normalized for alias in topic_aliases):
-            return topic
+        for alias in topic_aliases:
+            if alias in normalized:
+                return topic
     return None
 
 
@@ -565,20 +568,23 @@ def _message_mentions_date(content: str) -> bool:
         "weekend",
     )
 
-    if any(re.search(rf"\b{word}\b", normalized) for word in date_words):
-        return True
+    for word in date_words:
+        if re.search(rf"\b{word}\b", normalized):
+            return True
 
-    return any(
-        re.search(pattern, normalized) is not None
-        for pattern in (
-            r"\b(?:next|this)\s+(?:week|month)\b",
-            r"\b(?:in|after)\s+(?:a|an|one|two|three|\d+)\s+days?\b",
-            r"\b(?:a|an|one|two|three|\d+)\s+days?\s+from\s+now\b",
-            r"\b\d{4}-\d{1,2}-\d{1,2}\b",
-            r"\b\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?\b",
-            r"\b\d{1,2}(?:st|nd|rd|th)\b",
-        )
+    date_patterns = (
+        r"\b(?:next|this)\s+(?:week|month)\b",
+        r"\b(?:in|after)\s+(?:a|an|one|two|three|\d+)\s+days?\b",
+        r"\b(?:a|an|one|two|three|\d+)\s+days?\s+from\s+now\b",
+        r"\b\d{4}-\d{1,2}-\d{1,2}\b",
+        r"\b\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?\b",
+        r"\b\d{1,2}(?:st|nd|rd|th)\b",
     )
+    for pattern in date_patterns:
+        if re.search(pattern, normalized) is not None:
+            return True
+
+    return False
 
 
 def _coerce_requested_boolean(
@@ -623,11 +629,10 @@ def _coerce_requested_date(
     if next_missing_field not in date_fields:
         return extracted
 
-    extracted_dates = [
-        information
-        for information in extracted
-        if information.information_field in date_fields
-    ]
+    extracted_dates: list[Information] = []
+    for information in extracted:
+        if information.information_field in date_fields:
+            extracted_dates.append(information)
 
     if not extracted_dates:
         return extracted
@@ -643,18 +648,17 @@ def _coerce_requested_date(
             content,
         )
         if information is None:
-            information = next(
-                (
-                    candidate
-                    for candidate in extracted_dates
-                    if candidate.information_field == next_missing_field
-                ),
-                extracted_dates[-1],
-            )
+            # Prefer the requested role; otherwise retain the model's last date.
+            information = extracted_dates[-1]
+            for candidate in extracted_dates:
+                if candidate.information_field == next_missing_field:
+                    information = candidate
+                    break
 
-    non_date_information = [
-        item for item in extracted if item.information_field not in date_fields
-    ]
+    non_date_information: list[Information] = []
+    for item in extracted:
+        if item.information_field not in date_fields:
+            non_date_information.append(item)
     return _deduplicate_information(
         [
             *non_date_information,
@@ -674,16 +678,18 @@ def _resolve_ambiguous_single_date(
         InformationField.CHECK_IN,
         InformationField.CHECK_OUT,
     }
-    extracted_dates = [
-        information
-        for information in extracted
-        if information.information_field in date_fields
-        and isinstance(information.content, date)
-    ]
-    date_values = {information.content for information in extracted_dates}
-    extracted_fields = {
-        information.information_field for information in extracted_dates
-    }
+    extracted_dates: list[Information] = []
+    for information in extracted:
+        if information.information_field in date_fields and isinstance(
+            information.content, date
+        ):
+            extracted_dates.append(information)
+
+    date_values: set[object] = set()
+    extracted_fields: set[InformationField] = set()
+    for information in extracted_dates:
+        date_values.add(information.content)
+        extracted_fields.add(information.information_field)
 
     if (
         len(date_values) != 1
@@ -706,16 +712,16 @@ def _resolve_ambiguous_single_date(
     else:
         return extracted
 
-    non_date_information = [
-        information
-        for information in extracted
-        if information.information_field not in date_fields
-    ]
-    selected_information = next(
-        information
-        for information in extracted_dates
-        if information.information_field == selected_field
-    )
+    non_date_information: list[Information] = []
+    for information in extracted:
+        if information.information_field not in date_fields:
+            non_date_information.append(information)
+
+    selected_information = extracted_dates[0]
+    for information in extracted_dates:
+        if information.information_field == selected_field:
+            selected_information = information
+            break
     return [
         *non_date_information,
         selected_information,
@@ -728,13 +734,13 @@ def _reused_date_field(
 ) -> InformationField | None:
     """Return the stored role of a single date repeated by the user."""
 
-    date_values = {
-        information.content
-        for information in extracted
-        if information.information_field
-        in {InformationField.CHECK_IN, InformationField.CHECK_OUT}
-        and isinstance(information.content, date)
-    }
+    date_values: set[date] = set()
+    for information in extracted:
+        if information.information_field in {
+            InformationField.CHECK_IN,
+            InformationField.CHECK_OUT,
+        } and isinstance(information.content, date):
+            date_values.add(information.content)
 
     if len(date_values) != 1:
         return None
@@ -749,15 +755,17 @@ def _reused_date_field(
 
 def _looks_like_date_range(content: str) -> bool:
     normalized = " ".join(content.casefold().strip().split())
-    return any(
-        re.search(pattern, normalized) is not None
-        for pattern in (
-            r"\bfrom\b.+\b(?:to|until|through)\b",
-            r"\bbetween\b.+\band\b",
-            r"\b\d+\s+nights?\s+from\b",
-            r"\d[^\n]*\s[-–]\s*\d",
-        )
+    range_patterns = (
+        r"\bfrom\b.+\b(?:to|until|through)\b",
+        r"\bbetween\b.+\band\b",
+        r"\b\d+\s+nights?\s+from\b",
+        r"\d[^\n]*\s[-–]\s*\d",
     )
+    for pattern in range_patterns:
+        if re.search(pattern, normalized) is not None:
+            return True
+
+    return False
 
 
 def _date_matching_explicit_weekday(
@@ -774,29 +782,23 @@ def _date_matching_explicit_weekday(
         "saturday": 5,
         "sunday": 6,
     }
-    mentioned_weekday = next(
-        (
-            weekday
-            for name, weekday in weekdays.items()
-            if re.search(rf"\b{name}\b", normalized)
-        ),
-        None,
-    )
+    mentioned_weekday = None
+    for name, weekday in weekdays.items():
+        if re.search(rf"\b{name}\b", normalized):
+            mentioned_weekday = weekday
+            break
 
     if mentioned_weekday is None:
         return None
 
-    return next(
-        (
-            information
-            for information in extracted_dates
-            if (
-                isinstance(information.content, date)
-                and information.content.weekday() == mentioned_weekday
-            )
-        ),
-        None,
-    )
+    for information in extracted_dates:
+        if (
+            isinstance(information.content, date)
+            and information.content.weekday() == mentioned_weekday
+        ):
+            return information
+
+    return None
 
 
 def _deduplicate_information(
@@ -818,9 +820,9 @@ def _plausible_information(
 ) -> tuple[list[Information], set[InformationField]]:
     """Discard obviously invalid dates before storage or confirmation."""
 
-    candidates = {
-        information.information_field: information for information in extracted
-    }
+    candidates: dict[InformationField, Information] = {}
+    for information in extracted:
+        candidates[information.information_field] = information
     invalid_fields: set[InformationField] = set()
     today = datetime.now(UTC).astimezone().date()
 
@@ -865,14 +867,12 @@ def _plausible_information(
         if new_check_out is not None:
             invalid_fields.add(InformationField.CHECK_OUT)
 
-    return (
-        [
-            information
-            for information in candidates.values()
-            if information.information_field not in invalid_fields
-        ],
-        invalid_fields,
-    )
+    valid_information: list[Information] = []
+    for information in candidates.values():
+        if information.information_field not in invalid_fields:
+            valid_information.append(information)
+
+    return valid_information, invalid_fields
 
 
 def _candidate_date(
@@ -922,11 +922,9 @@ def _active_data_intent(
             return current
 
         relevant_fields = set(IntentInformationMapper.determine_fields(current))
-        if any(
-            information.information_field in relevant_fields
-            for information in extracted
-        ):
-            return current
+        for information in extracted:
+            if information.information_field in relevant_fields:
+                return current
 
     return None
 
@@ -948,9 +946,11 @@ def _refines_fulfilled_intent(
         return False
 
     relevant_fields = set(IntentInformationMapper.determine_fields(current))
-    return any(
-        information.information_field in relevant_fields for information in extracted
-    )
+    for information in extracted:
+        if information.information_field in relevant_fields:
+            return True
+
+    return False
 
 
 def _starts_new_data_scope(
@@ -1049,11 +1049,23 @@ def _fields_for_data_request(
         return [requested_field]
 
     missing_fields = set(state.get("missing_fields", []))
-    if all(field in missing_fields for field in _BOOKING_IDENTITY_FIELDS):
+    all_identity_fields_missing = True
+    for field in _BOOKING_IDENTITY_FIELDS:
+        if field not in missing_fields:
+            all_identity_fields_missing = False
+            break
+
+    if all_identity_fields_missing:
         return list(_BOOKING_IDENTITY_FIELDS)
 
     name_fields = _BOOKING_IDENTITY_FIELDS[:2]
-    if all(field in missing_fields for field in name_fields):
+    all_name_fields_missing = True
+    for field in name_fields:
+        if field not in missing_fields:
+            all_name_fields_missing = False
+            break
+
+    if all_name_fields_missing:
         return list(name_fields)
 
     return [requested_field]
@@ -1133,11 +1145,9 @@ def _early_availability_tuple_from_information(
     information: Mapping[InformationField, Information],
 ) -> tuple[date, date, int, bool, bool]:
     guest_information = information.get(InformationField.GUEST_COUNT)
-    guest_count = (
-        _required_int(information, InformationField.GUEST_COUNT)
-        if guest_information is not None
-        else 1
-    )
+    guest_count = 1
+    if guest_information is not None:
+        guest_count = _required_int(information, InformationField.GUEST_COUNT)
 
     return (
         _required_date(information, InformationField.CHECK_IN),
@@ -1163,23 +1173,28 @@ def _booking_availability_signature(
         check_in = _required_date(information, InformationField.CHECK_IN)
         check_out = _required_date(information, InformationField.CHECK_OUT)
         guest_information = information.get(InformationField.GUEST_COUNT)
-        guest_count = (
-            _required_int(information, InformationField.GUEST_COUNT)
-            if guest_information is not None
-            else None
-        )
+        guest_count = None
+        if guest_information is not None:
+            guest_count = _required_int(
+                information,
+                InformationField.GUEST_COUNT,
+            )
+
         accessible_information = information.get(InformationField.ACCESSIBLE)
-        accessible = (
-            _required_bool(information, InformationField.ACCESSIBLE)
-            if accessible_information is not None
-            else None
-        )
+        accessible = None
+        if accessible_information is not None:
+            accessible = _required_bool(
+                information,
+                InformationField.ACCESSIBLE,
+            )
+
         category_information = information.get(InformationField.ROOM_CATEGORY)
-        category = (
-            _required_string(information, InformationField.ROOM_CATEGORY)
-            if category_information is not None
-            else None
-        )
+        category = None
+        if category_information is not None:
+            category = _required_string(
+                information,
+                InformationField.ROOM_CATEGORY,
+            )
     except (KeyError, TypeError, ValueError):
         return None
 

@@ -59,12 +59,12 @@ class JsonFormatter(logging.Formatter):
         record: logging.LogRecord,
     ) -> dict[str, Any]:
         """Return attributes added through logging's extra argument."""
-        return {
-            key: value
-            for key, value in record.__dict__.items()
-            if key not in _STANDARD_LOG_RECORD_ATTRIBUTES
-            and not key.startswith("_")
-        }
+        extra_fields: dict[str, Any] = {}
+        for key, value in record.__dict__.items():
+            if key not in _STANDARD_LOG_RECORD_ATTRIBUTES and not key.startswith("_"):
+                extra_fields[key] = value
+
+        return extra_fields
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:

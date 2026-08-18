@@ -22,7 +22,6 @@ from observability.log_messages import LOG_MSG
 
 
 class InformationExtractor(InformationExtractorInterface):
-
     _SCHEMA = get_information_extraction_schema()
     _FIELD_MAP = get_field_map()
     _SYSTEM_PROMPT = get_system_prompt()
@@ -51,11 +50,9 @@ class InformationExtractor(InformationExtractorInterface):
     ) -> list[Information]:
         """Try to extract information fields from given user message."""
         expected_field_name = self._expected_field_name(expected_field)
-        expected_field_context = (
-            f"\nExpected answer field: {expected_field_name}"
-            if expected_field_name is not None
-            else ""
-        )
+        expected_field_context = ""
+        if expected_field_name is not None:
+            expected_field_context = f"\nExpected answer field: {expected_field_name}"
         with self._inference_lock:
             response = cast(
                 CreateChatCompletionResponse,
@@ -88,18 +85,16 @@ class InformationExtractor(InformationExtractorInterface):
         content = response["choices"][0]["message"]["content"]
 
         if not isinstance(content, str):
-            raise TypeError(
-                "Information extractor returned no textual content."
-            )
+            raise TypeError("Information extractor returned no textual content.")
 
         extracted: dict[str, Any] = json.loads(content)
 
-        retval = []            
+        retval = []
         for field_name, value in extracted.items():
             information = self._build_information(field_name, value)
             if information is not None:
                 retval.append(information)
-        
+
         return retval
 
     @staticmethod
@@ -110,7 +105,9 @@ class InformationExtractor(InformationExtractorInterface):
             return "breakfast"
         if expected_field is InformationField.ACCESSIBLE:
             return "accessible"
-        return expected_field.value if expected_field is not None else None
+        if expected_field is not None:
+            return expected_field.value
+        return None
 
     def warm_up(self) -> None:
         """Run one representative extraction before guest traffic starts."""
@@ -130,14 +127,14 @@ class InformationExtractor(InformationExtractorInterface):
                 InformationField.CHECK_OUT,
             }:
                 value = date.fromisoformat(value)
-        
+
             information = Information(
                 information_field=information_field,
                 content=value,
             )
-            
+
             return information
-        
+
         except (ValueError, TypeError, KeyError) as error:
             LOG_MSG.debug(f"Invalid Information: {field_name}={value!r} ({error})")
             return None

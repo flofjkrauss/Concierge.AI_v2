@@ -94,7 +94,7 @@ class NLLBTranslator(TranslatorInterface):
         self._tokenizer = AutoTokenizer.from_pretrained(
             _TRANSLATION_MODEL_DIR,
             local_files_only=True,
-        ) # type: ignore[no-untyped-call]
+        )  # type: ignore[no-untyped-call]
         self._model = AutoModelForSeq2SeqLM.from_pretrained(
             _TRANSLATION_MODEL_DIR,
             local_files_only=True,
@@ -141,13 +141,13 @@ class NLLBTranslator(TranslatorInterface):
 
             self._tokenizer.src_lang = source_lang
 
-            model_inputs = {
-                key: value.to(_PROCESSING_UNIT)
-                for key, value in self._tokenizer(
-                    content,
-                    return_tensors="pt",
-                ).items()
-            }
+            tokenized_inputs = self._tokenizer(
+                content,
+                return_tensors="pt",
+            )
+            model_inputs: dict[str, torch.Tensor] = {}
+            for key, value in tokenized_inputs.items():
+                model_inputs[key] = value.to(_PROCESSING_UNIT)
 
             source_token_count = len(
                 self._tokenizer.encode(
@@ -156,7 +156,10 @@ class NLLBTranslator(TranslatorInterface):
                 )
             )
 
-            max_new_tokens = 2 if source_token_count == 1 else _MAX_NEW_TOKENS
+            max_new_tokens = _MAX_NEW_TOKENS
+            if source_token_count == 1:
+                # Keep single-token translations from producing extra text.
+                max_new_tokens = 2
 
             target_language_id = self._tokenizer.convert_tokens_to_ids(target_lang)
             if not isinstance(target_language_id, int):
@@ -230,8 +233,7 @@ class NLLBTranslator(TranslatorInterface):
             nllb_language = _LANGUAGE_CODES[normalized]
         except KeyError as exc:
             raise UnsupportedLanguageError(
-                f"Language code {language!r} is not supported by "
-                f"{type(self).__name__}"
+                f"Language code {language!r} is not supported by {type(self).__name__}"
             ) from exc
 
         language_id = self._tokenizer.convert_tokens_to_ids(nllb_language)

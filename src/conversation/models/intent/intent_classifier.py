@@ -69,10 +69,10 @@ class IntentClassifier(IntentionDetectorInterface):
             max_length=_SETTINGS.intent_max_tokens,
         )
 
-        inputs = {
-            key: value.to(self._device)
-            for key, value in inputs.items()
-        }
+        device_inputs: dict[str, torch.Tensor] = {}
+        for key, value in inputs.items():
+            device_inputs[key] = value.to(self._device)
+        inputs = device_inputs
 
         with torch.inference_mode():
             logits = self._model(**inputs).logits

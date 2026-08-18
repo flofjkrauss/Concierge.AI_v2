@@ -29,11 +29,10 @@ def determine_missing_fields(
 
     information = state.get("collected_information", {})
 
-    missing_fields = [
-        field
-        for field in required_fields
-        if (field not in information or not _is_valid_information(information[field]))
-    ]
+    missing_fields = []
+    for field in required_fields:
+        if field not in information or not _is_valid_information(information[field]):
+            missing_fields.append(field)
 
     next_missing_field = None
 
