@@ -77,7 +77,10 @@ def test_pending_confirmation_is_extracted_from_original_message() -> None:
     )
 
     assert result["extracted_information"] == [confirmation]
-    extractor.extract.assert_called_once_with(message=original)
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
 
 
 def test_information_extractor_delegates_confirmation_to_qwen() -> None:

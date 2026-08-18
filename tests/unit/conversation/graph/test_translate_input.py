@@ -12,6 +12,10 @@ from conversation.graph.state import ConversationState
 from conversation.models.translation.interface import TranslatorInterface
 from conversation.value_object.booking_selection import BookingSelection
 from conversation.value_object.information_fields import InformationField
+from conversation.value_object.information_topic_selection import (
+    InformationTopicSelection,
+)
+from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.room_category import RoomCategory
 
 
@@ -43,6 +47,21 @@ def test_booking_selection_uses_session_language_without_translation() -> None:
 
     assert result["translated_message"].content == wire  # type: ignore[union-attr]
     assert result["collected_information"][InformationField.PREFERRED_LANG].content == "de"  # type: ignore[index]
+    translator.determine.assert_not_called()
+    translator.translate.assert_not_called()
+
+
+def test_information_topic_selection_is_not_translated() -> None:
+    translator = Mock(spec=TranslatorInterface)
+    wire = InformationTopicSelection(InformationTopic.WIFI).to_wire()
+
+    result = translate_input(
+        _context(translator),
+        _state(parsed_message=Message(wire), language="de"),
+    )
+
+    assert result["translated_message"].content == wire  # type: ignore[union-attr]
+    assert result["language"] == "de"
     translator.determine.assert_not_called()
     translator.translate.assert_not_called()
 

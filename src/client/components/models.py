@@ -36,7 +36,7 @@ class Shortcut:
 
     visible_text: str
     api_text: str
-    source_message_id: str
+    source_message_id: str | None
 
 
 @dataclass(frozen=True, slots=True)

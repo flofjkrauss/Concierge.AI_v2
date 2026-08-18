@@ -117,7 +117,6 @@ INFORMATION_VALIDATORS: dict[
     InformationField.FIRST_NAME: is_person_name,
     InformationField.LAST_NAME: is_person_name,
     InformationField.EMAIL: has_mail_format,
-    InformationField.BOOKING_ID: is_non_empty_string,
     InformationField.PREFERRED_LANG: is_non_empty_string,
     InformationField.PHONE: is_non_empty_string,
     InformationField.INFORMATION_TOPIC: is_information_topic,

@@ -14,6 +14,7 @@ from conversation.models.information.interface import InformationExtractorInterf
 from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.models.translation.interface import NoneTranslator
 from conversation.user_interaction import UserInteraction
+from conversation.value_object.information_fields import InformationField
 from conversation.value_object.intent import Intent
 
 
@@ -23,7 +24,11 @@ class GreetingClassifier(IntentionDetectorInterface):
 
 
 class EmptyExtractor(InformationExtractorInterface):
-    def extract(self, message: Message) -> list:
+    def extract(
+        self,
+        message: Message,
+        expected_field: InformationField | None = None,
+    ) -> list:
         return []
 
 

@@ -468,8 +468,17 @@ html, body, [class*="css"] {
   line-height: 1.55;
 }
 
-.harbour-information-topics-card {
-  display: block;
+[class*="st-key-information_topics_card_"] {
+  overflow: hidden;
+  margin: 0.85rem 0 1rem;
+  padding: 1.05rem;
+  border: 1px solid rgba(217, 174, 92, 0.42);
+  border-top: 3px solid var(--harbour-gold-soft);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 92% 5%, rgba(217, 174, 92, 0.1), transparent 34%),
+    linear-gradient(145deg, rgba(32, 42, 53, 0.98), rgba(18, 25, 32, 0.98));
+  box-shadow: 0 12px 28px rgba(10, 15, 21, 0.22);
 }
 
 .harbour-information-topics-card__header {
@@ -480,23 +489,17 @@ html, body, [class*="css"] {
   margin-bottom: 1rem;
 }
 
-.harbour-information-topics-card__grid {
-  column-count: 2;
-  column-gap: 0.65rem;
-}
-
-.harbour-information-topics-card__group {
-  break-inside: avoid;
+[class*="st-key-information_topic_group_"] {
   min-width: 0;
-  margin: 0 0 0.65rem;
+  margin-bottom: 0.65rem;
   padding: 0.72rem 0.78rem;
   border: 1px solid rgba(217, 174, 92, 0.2);
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.035);
 }
 
-[data-testid="stChatMessage"] .harbour-information-topics-card__group h5 {
-  margin: 0 0 0.52rem;
+[class*="st-key-information_topic_group_"] h5 {
+  margin: 0 0 0.45rem;
   color: #e3c987 !important;
   font-size: 0.8rem;
   font-weight: 750;
@@ -505,39 +508,25 @@ html, body, [class*="css"] {
   text-transform: uppercase;
 }
 
-.harbour-information-topics-card__items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.38rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+[class*="st-key-information_topic_group_"] [data-testid="stButtonGroup"] button {
+  min-height: 2rem;
+  border-color: rgba(217, 174, 92, 0.22);
+  color: #e5e4df !important;
+  background: rgba(11, 17, 23, 0.42);
+  font-size: 0.78rem;
+  font-weight: 650;
 }
 
-.harbour-information-topics-card__items li {
-  display: inline-flex;
-  min-width: 0;
-  gap: 0.34rem;
-  align-items: center;
-  padding: 0.32rem 0.48rem;
-  border: 1px solid rgba(217, 174, 92, 0.14);
-  border-radius: 999px;
-  color: #e5e4df;
-  background: rgba(11, 17, 23, 0.35);
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.25;
+[class*="st-key-information_topic_group_"] [data-testid="stButtonGroup"] button p {
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
 }
 
-.harbour-information-topics-card__topic-icon {
-  display: inline-grid;
-  width: 1rem;
-  flex: 0 0 1rem;
-  place-items: center;
-  color: #e6c87e;
-  font-family: "Segoe UI Symbol", "Segoe UI Emoji", sans-serif;
-  font-size: 0.78rem;
-  line-height: 1;
+[class*="st-key-information_topic_group_"] [data-testid="stButtonGroup"] button:hover {
+  border-color: rgba(230, 200, 126, 0.68);
+  color: #fffaf0 !important;
+  background: rgba(217, 174, 92, 0.13);
 }
 
 .harbour-booking-card {
@@ -1023,7 +1012,4 @@ html, body, [class*="css"] {
     height: 46px;
   }
 
-  .harbour-information-topics-card__grid {
-    column-count: 1;
-  }
 }

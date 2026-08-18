@@ -205,6 +205,28 @@ def test_submit_turn_consumes_shortcut_only_once(
     assert client_app._consumed_actions() == {"option-1"}
 
 
+def test_submit_turn_without_consumption_key_can_repeat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_state = _local_state(monkeypatch)
+    session_state[client_app.SESSION_ID_KEY] = "session-1"
+    session_state[client_app.SESSION_ACTIVE_KEY] = True
+    api = Mock(spec=ConversationApi)
+    api.send_message.return_value = ConversationResponse.from_payload(
+        {"session_active": True, "text": "Hotel information"}
+    )
+
+    for _ in range(2):
+        client_app._submit_turn(
+            api,
+            visible_text="Tell me about Wi-Fi",
+            api_text="information wire",
+        )
+
+    assert api.send_message.call_count == 2
+    assert client_app._consumed_actions() == set()
+
+
 def test_complete_pending_turn_applies_response_and_clears_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -354,7 +376,7 @@ def test_main_renders_unavailable_concierge_state(
     client_app.apply_theme.assert_called_once()
     client_app.render_header.assert_called_once()
     assert client_app._messages()[-1].text == client_app.SERVICE_UNAVAILABLE
-    assert transcript.call_args.kwargs["session_active"] is False
+    assert transcript.call_args.kwargs["actions_enabled"] is False
     assert client_app.st.chat_input.call_args.kwargs["disabled"] is True
     client_app.focus_chat_input_on_load.assert_called_once()
 
@@ -378,7 +400,8 @@ def test_main_submits_selected_transcript_shortcut(
     register = Mock()
     monkeypatch.setattr(client_app.time, "monotonic", lambda: 11.0)
     monkeypatch.setattr(client_app, "_api_from_environment", lambda: api)
-    monkeypatch.setattr(client_app, "render_transcript", Mock(return_value=shortcut))
+    transcript = Mock(return_value=shortcut)
+    monkeypatch.setattr(client_app, "render_transcript", transcript)
     monkeypatch.setattr(client_app, "_submit_turn", submit)
     monkeypatch.setattr(client_app, "register_tab_close_termination", register)
     api.termination_url.return_value = "https://hotel.test/terminate"
@@ -394,6 +417,35 @@ def test_main_submits_selected_transcript_shortcut(
     )
     client_app.st.rerun.assert_called_once()
     assert client_app.st.chat_input.call_args.kwargs["disabled"] is False
+    assert transcript.call_args.kwargs["actions_enabled"] is True
+
+
+def test_main_disables_transcript_actions_while_turn_is_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending: Future[ConversationResponse] = Future()
+    session_state: dict[str, object] = {
+        client_app.MESSAGES_KEY: [],
+        client_app.SESSION_ID_KEY: "session-1",
+        client_app.SESSION_ACTIVE_KEY: True,
+        client_app.LAST_ACTIVITY_KEY: 10.0,
+        client_app.CONSUMED_ACTIONS_KEY: set(),
+        client_app.INITIALIZED_KEY: True,
+        client_app.PENDING_TURN_KEY: pending,
+    }
+    monkeypatch.setattr(client_app.st, "session_state", session_state)
+    _mock_main_streamlit(monkeypatch)
+    api = Mock(spec=ConversationApi)
+    transcript = Mock(return_value=None)
+    monkeypatch.setattr(client_app, "_api_from_environment", lambda: api)
+    monkeypatch.setattr(client_app, "render_transcript", transcript)
+    monkeypatch.setattr(client_app, "register_tab_close_termination", Mock())
+    api.termination_url.return_value = "https://hotel.test/terminate"
+
+    client_app.main()
+
+    assert transcript.call_args.kwargs["actions_enabled"] is False
+    assert client_app.st.chat_input.call_args.kwargs["disabled"] is True
 
 
 def test_main_watchdog_expires_inactive_session(

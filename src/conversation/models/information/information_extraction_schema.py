@@ -53,7 +53,6 @@ def get_field_map() -> dict[str, InformationField]:
         "breakfast": InformationField.BREAKFAST,
         "accessible": InformationField.ACCESSIBLE,
         "preferred_language": InformationField.PREFERRED_LANG,
-        "booking_id": InformationField.BOOKING_ID,
         "information_topic": InformationField.INFORMATION_TOPIC,
         "room_category": InformationField.ROOM_CATEGORY,
         "confirmation": InformationField.CONFIRMATION,

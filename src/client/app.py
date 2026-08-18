@@ -371,7 +371,7 @@ def main() -> None:
     shortcut = render_transcript(
         _messages(),
         asset_dir=ASSET_DIR,
-        session_active=_is_session_active(),
+        actions_enabled=_is_session_active() and not _has_pending_turn(),
         consumed_actions=_consumed_actions(),
     )
     if shortcut is not None:

@@ -8,6 +8,7 @@ from .support import (
     ConversationState,
     Information,
     InformationField,
+    InformationTopicSelection,
     StateUpdate,
     _is_usable_message,
     _required_message,
@@ -26,7 +27,10 @@ def translate_input(
     parsed_message = _required_message(state, "parsed_message")
     session_language = state.get("language")
 
-    if BookingSelection.from_wire(parsed_message.content) is not None:
+    if (
+        BookingSelection.from_wire(parsed_message.content) is not None
+        or InformationTopicSelection.from_wire(parsed_message.content) is not None
+    ):
         if not isinstance(session_language, str) or not session_language.strip():
             session_language = context.domain_language
         normalized = replace(

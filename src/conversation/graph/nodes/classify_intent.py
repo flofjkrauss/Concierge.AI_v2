@@ -6,6 +6,7 @@ from .context import ConversationNodeContext
 from .support import (
     BookingSelection,
     ConversationState,
+    InformationTopicSelection,
     Intent,
     StateUpdate,
     _required_message,
@@ -21,7 +22,9 @@ def classify_intent(
 
     message = _required_message(state, "translated_message")
 
-    if BookingSelection.from_wire(message.content) is not None:
+    if InformationTopicSelection.from_wire(message.content) is not None:
+        detected = Intent.INFORMATION_REQUEST
+    elif BookingSelection.from_wire(message.content) is not None:
         detected = Intent.BOOKING_REQUEST
     else:
         try:

@@ -44,8 +44,18 @@ class InformationExtractor(InformationExtractorInterface):
         self._inference_lock = Lock()
         print(f"{type(self).__name__} loaded")
 
-    def extract(self, message: Message) -> list[Information]:
+    def extract(
+        self,
+        message: Message,
+        expected_field: InformationField | None = None,
+    ) -> list[Information]:
         """Try to extract information fields from given user message."""
+        expected_field_name = self._expected_field_name(expected_field)
+        expected_field_context = (
+            f"\nExpected answer field: {expected_field_name}"
+            if expected_field_name is not None
+            else ""
+        )
         with self._inference_lock:
             response = cast(
                 CreateChatCompletionResponse,
@@ -60,7 +70,8 @@ class InformationExtractor(InformationExtractorInterface):
                             "content": (
                                 "Current date: "
                                 f"{datetime.now(UTC).astimezone().date().isoformat()}"
-                                f"\n\nUser message:\n{message.content}"
+                                f"{expected_field_context}"
+                                f"\n\nCurrent user message:\n{message.content}"
                             ),
                         },
                     ],
@@ -90,6 +101,16 @@ class InformationExtractor(InformationExtractorInterface):
                 retval.append(information)
         
         return retval
+
+    @staticmethod
+    def _expected_field_name(
+        expected_field: InformationField | None,
+    ) -> str | None:
+        if expected_field is InformationField.BREAKFAST:
+            return "breakfast"
+        if expected_field is InformationField.ACCESSIBLE:
+            return "accessible"
+        return expected_field.value if expected_field is not None else None
 
     def warm_up(self) -> None:
         """Run one representative extraction before guest traffic starts."""

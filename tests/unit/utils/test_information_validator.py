@@ -61,7 +61,6 @@ def test_validator_registry_covers_stable_information_fields() -> None:
         InformationField.FIRST_NAME,
         InformationField.LAST_NAME,
         InformationField.EMAIL,
-        InformationField.BOOKING_ID,
         InformationField.PREFERRED_LANG,
         InformationField.PHONE,
     }

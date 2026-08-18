@@ -34,6 +34,9 @@ from conversation.value_object.action import Action
 from conversation.value_object.booking_selection import BookingSelection
 from conversation.value_object.default_phrases import DefaultPhrases
 from conversation.value_object.information_fields import InformationField
+from conversation.value_object.information_topic_selection import (
+    InformationTopicSelection,
+)
 from conversation.value_object.intent import Intent
 from conversation.value_object.intent_information_mapping import (
     IntentInformationMapper,
@@ -77,6 +80,7 @@ __all__ = [
     "InformationExtractorInterface",
     "InformationField",
     "InformationTopic",
+    "InformationTopicSelection",
     "Intent",
     "IntentInformationMapper",
     "IntentionDetectorInterface",
@@ -462,6 +466,10 @@ def _filter_context_dependent_information(
 
 
 def _mentioned_information_topic(content: str) -> InformationTopic | None:
+    selection = InformationTopicSelection.from_wire(content)
+    if selection is not None:
+        return selection.topic
+
     normalized = " ".join(content.casefold().strip().split())
     aliases: tuple[tuple[InformationTopic, tuple[str, ...]], ...] = (
         (InformationTopic.EARLY_CHECK_IN, ("early check-in", "early check in")),

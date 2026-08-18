@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import Mock
@@ -51,14 +51,7 @@ def test_missing_requested_fields_are_extracted_from_original_message() -> None:
     translated = Message("I want to cancel.", original_content=original.content)
     first_name = Information(InformationField.FIRST_NAME, "Max")
     last_name = Information(InformationField.LAST_NAME, "Mustermann")
-    extractor.extract.side_effect = [
-        [],
-        [
-            first_name,
-            last_name,
-            Information(InformationField.GUEST_COUNT, 4),
-        ],
-    ]
+    extractor.extract.return_value = [first_name, last_name]
 
     result = extract_information(
         _context(extractor),
@@ -81,9 +74,10 @@ def test_missing_requested_fields_are_extracted_from_original_message() -> None:
         InformationField.FIRST_NAME,
         InformationField.LAST_NAME,
     ]
-    assert [
-        call.kwargs["message"] for call in extractor.extract.call_args_list
-    ] == [translated, original]
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
 
 
 def test_primary_requested_field_does_not_trigger_second_extraction() -> None:
@@ -107,7 +101,10 @@ def test_primary_requested_field_does_not_trigger_second_extraction() -> None:
     )
 
     assert result["extracted_information"] == [guest_count]
-    extractor.extract.assert_called_once_with(message=translated)
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
 
 
 def test_bare_integer_fills_requested_integer_field_when_extraction_is_empty() -> None:
@@ -136,7 +133,10 @@ def test_bare_integer_fills_requested_integer_field_when_extraction_is_empty() -
     assert result["original_message_extracted_fields"] == [
         InformationField.GUEST_COUNT
     ]
-    extractor.extract.assert_called_once_with(message=translated)
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
 
 
 def test_bare_integer_is_authoritative_for_requested_integer_field() -> None:
@@ -163,7 +163,10 @@ def test_bare_integer_is_authoritative_for_requested_integer_field() -> None:
     assert len(extracted) == 1
     assert extracted[0].information_field is InformationField.GUEST_COUNT
     assert extracted[0].content == 2
-    extractor.extract.assert_called_once_with(message=translated)
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
 
 
 def test_original_literal_email_overrides_translator_hallucination() -> None:
@@ -194,7 +197,10 @@ def test_original_literal_email_overrides_translator_hallucination() -> None:
     assert len(extracted) == 1
     assert extracted[0].information_field is InformationField.EMAIL
     assert extracted[0].content == "Real.User@example.de"
-    extractor.extract.assert_called_once_with(message=translated)
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
 
 
 def test_nonliteral_email_hallucinations_are_not_accepted() -> None:
@@ -277,7 +283,49 @@ def test_pending_confirmation_uses_original_without_second_extraction() -> None:
     )
 
     assert result["extracted_information"] == []
-    extractor.extract.assert_called_once_with(message=original)
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
+
+
+def test_information_question_does_not_fill_requested_boolean() -> None:
+    extractor = _extractor()
+    original = Message("What is an accessible room?")
+    translated = Message(
+        "The Commission shall adopt implementing acts.",
+        original_content=original.content,
+    )
+    information_topic = Information(
+        InformationField.INFORMATION_TOPIC,
+        "accessibility",
+    )
+    extractor.extract.return_value = [
+        Information(InformationField.ACCESSIBLE, True),
+        information_topic,
+    ]
+
+    result = extract_information(
+        _context(extractor),
+        _state(
+            parsed_message=original,
+            translated_message=translated,
+            current_intent=Intent.AVAILABILITY_CHECK,
+            last_intent_fulfilled=False,
+            next_missing_field=InformationField.ACCESSIBLE,
+            missing_fields=[InformationField.ACCESSIBLE],
+            expected_interaction=None,
+        ),
+    )
+
+    assert result["extracted_information"] == [information_topic]
+    assert result["original_message_extracted_fields"] == [
+        InformationField.INFORMATION_TOPIC
+    ]
+    extractor.extract.assert_called_once_with(
+        message=original,
+        expected_field=None,
+    )
 
 
 def test_grouped_requested_field_keeps_current_intent() -> None:
@@ -302,6 +350,47 @@ def test_grouped_requested_field_keeps_current_intent() -> None:
         "current_intent": Intent.BOOKING_REQUEST,
         "last_intent_fulfilled": False,
     }
+
+
+@pytest.mark.parametrize(
+    ("field", "content", "expected"),
+    [
+        (InformationField.CHECK_IN, "27.08.2026", date(2026, 8, 27)),
+        (InformationField.CHECK_OUT, "2026-09-02", date(2026, 9, 2)),
+        (InformationField.CHECK_OUT, "10/09/2026", date(2026, 9, 10)),
+    ],
+)
+def test_numeric_requested_date_uses_original_without_models(
+    field: InformationField,
+    content: str,
+    expected: date,
+) -> None:
+    extractor = _extractor()
+    original = Message(content)
+    translated = Message(
+        "The Commission shall adopt implementing acts.",
+        original_content=content,
+    )
+
+    result = extract_information(
+        _context(extractor),
+        _state(
+            parsed_message=original,
+            translated_message=translated,
+            current_intent=Intent.AVAILABILITY_CHECK,
+            last_intent_fulfilled=False,
+            next_missing_field=field,
+            missing_fields=[field],
+            expected_interaction=None,
+        ),
+    )
+
+    extracted = result["extracted_information"]
+    assert len(extracted) == 1
+    assert extracted[0].information_field is field
+    assert extracted[0].content == expected
+    assert result["original_message_extracted_fields"] == [field]
+    extractor.extract.assert_not_called()
 
 
 def test_recovered_requested_date_keeps_current_intent() -> None:
@@ -333,6 +422,12 @@ def test_recovered_requested_date_keeps_current_intent() -> None:
     )
 
     extraction_update = extract_information(_context(extractor), state)
+    assert [
+        call.kwargs["message"] for call in extractor.extract.call_args_list
+    ] == [original, translated]
+    assert [
+        call.kwargs["expected_field"] for call in extractor.extract.call_args_list
+    ] == [InformationField.CHECK_OUT, InformationField.CHECK_OUT]
     progress_update = update_progress(
         _context(extractor),
         cast(ConversationState, {**state, **extraction_update}),
@@ -364,8 +459,6 @@ def test_recovered_date_is_validated_against_original_message() -> None:
         "The Commission shall adopt implementing acts.",
         original_content=original.content,
     )
-    recovered = Information(InformationField.CHECK_IN, check_in)
-    extractor.extract.side_effect = [[], [recovered]]
     state = _state(
         parsed_message=original,
         translated_message=translated,
@@ -388,11 +481,47 @@ def test_recovered_date_is_validated_against_original_message() -> None:
     assert extraction_update["original_message_extracted_fields"] == [
         InformationField.CHECK_IN
     ]
-    assert progress_update["extracted_information"] == [recovered]
+    extractor.extract.assert_not_called()
+    extracted = progress_update["extracted_information"]
+    assert len(extracted) == 1
+    assert extracted[0].information_field is InformationField.CHECK_IN
+    assert extracted[0].content == check_in
     assert progress_update["collected_information"] == {
-        InformationField.CHECK_IN: recovered
+        InformationField.CHECK_IN: extracted[0]
     }
     assert progress_update["unknown_counter"] == 0
+
+
+def test_past_numeric_requested_date_is_reported_as_invalid() -> None:
+    extractor = _extractor()
+    original = Message("27.08.1991")
+    translated = Message(
+        "The Commission shall adopt implementing acts.",
+        original_content=original.content,
+    )
+    state = _state(
+        parsed_message=original,
+        translated_message=translated,
+        current_intent=Intent.AVAILABILITY_CHECK,
+        detected_intent=Intent.UNKNOWN,
+        last_intent_fulfilled=False,
+        next_missing_field=InformationField.CHECK_IN,
+        missing_fields=[InformationField.CHECK_IN],
+        expected_interaction=None,
+        collected_information={},
+        unknown_counter=0,
+    )
+
+    extraction_update = extract_information(_context(extractor), state)
+    progress_update = update_progress(
+        _context(extractor),
+        cast(ConversationState, {**state, **extraction_update}),
+    )
+
+    assert progress_update["action"] is Action.REPORT_INVALID_DATE
+    assert progress_update["domain_data"] is InformationField.CHECK_IN
+    assert progress_update["extracted_information"] == []
+    extractor.extract.assert_not_called()
 
 
 def test_implausible_recovered_date_is_reported_for_requested_field() -> None:

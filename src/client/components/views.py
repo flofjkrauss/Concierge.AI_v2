@@ -18,6 +18,10 @@ from client.components.models import (
     Shortcut,
 )
 from conversation.value_object.default_phrases import INFORMATION_TOPICS_WIRE_TOPIC
+from conversation.value_object.information_topic_selection import (
+    InformationTopicSelection,
+)
+from domain.value_objects.information_topic import InformationTopic
 
 CATEGORY_LABELS = {
     "single": "Single Room",
@@ -185,7 +189,7 @@ def render_transcript(
     messages: list[ChatEntry],
     *,
     asset_dir: Path,
-    session_active: bool,
+    actions_enabled: bool,
     consumed_actions: set[str],
 ) -> Shortcut | None:
     """Render messages and return at most one selected shortcut."""
@@ -207,14 +211,19 @@ def render_transcript(
                 else None
             )
             if information is not None:
-                render_information_card(information)
+                action = render_information_card(
+                    information,
+                    message_id=entry.message_id,
+                    actionable=actions_enabled,
+                )
+                selected = selected or action
             else:
                 st.markdown(entry.text)
             if response is None:
                 continue
 
             unconsumed = (
-                session_active
+                actions_enabled
                 and entry.message_id not in consumed_actions
             )
             actionable = unconsumed and (
@@ -256,13 +265,21 @@ def _render_structured_response(
     return None
 
 
-def render_information_card(information: InformationCardData) -> None:
+def render_information_card(
+    information: InformationCardData,
+    *,
+    message_id: str | None = None,
+    actionable: bool = False,
+) -> Shortcut | None:
     """Render one hotel-information answer from the conversation API."""
 
     topic = INFORMATION_TOPIC_ALIASES.get(information.topic, information.topic)
     if topic == INFORMATION_TOPICS_WIRE_TOPIC:
-        _render_information_topics_card(information)
-        return
+        return _render_information_topics_card(
+            information,
+            message_id=message_id or "information-topics",
+            actionable=actionable and message_id is not None,
+        )
 
     symbol = INFORMATION_TOPIC_SYMBOLS.get(topic, "i")
     title = (
@@ -284,50 +301,83 @@ def render_information_card(information: InformationCardData) -> None:
         "</section>"
     )
     st.markdown(markup, unsafe_allow_html=True)
+    return None
 
 
-def _render_information_topics_card(information: InformationCardData) -> None:
+def _render_information_topics_card(
+    information: InformationCardData,
+    *,
+    message_id: str,
+    actionable: bool,
+) -> Shortcut | None:
     """Render the complete hotel-information topic guide."""
 
     title = information.title or "What can I help with?"
-    groups = "".join(
-        (
-            '<section class="harbour-information-topics-card__group">'
-            f"<h5>{escape(group_title)}</h5>"
-            '<ul class="harbour-information-topics-card__items">'
-            + "".join(
-                (
-                    "<li>"
-                    '<span class="harbour-information-topics-card__topic-icon" '
-                    'aria-hidden="true">'
-                    f"{escape(INFORMATION_TOPIC_SYMBOLS[topic])}"
-                    "</span>"
-                    f"<span>{escape(INFORMATION_TOPIC_TITLES[topic])}</span>"
-                    "</li>"
-                )
-                for topic in topics
-            )
-            + "</ul>"
-            "</section>"
-        )
-        for group_title, topics in INFORMATION_TOPIC_GROUPS
-    )
-    markup = (
-        '<section class="harbour-information-card '
-        'harbour-information-topics-card" '
+    header = (
+        '<header class="harbour-information-topics-card__header" '
         f'aria-label="Hotel information: {escape(title)}">'
-        '<header class="harbour-information-topics-card__header">'
         '<span class="harbour-information-card__icon" aria-hidden="true">i</span>'
         '<div class="harbour-information-card__content">'
         '<span class="harbour-information-card__eyebrow">Hotel information</span>'
         f"<h4>{escape(title)}</h4>"
-        "<p>Choose a topic below and ask your question in your own words.</p>"
+        "<p>Select a topic to see the hotel information.</p>"
         "</div>"
         "</header>"
-        f'<div class="harbour-information-topics-card__grid">{groups}</div>'
-        "</section>"
     )
-    st.markdown(markup, unsafe_allow_html=True)
+    action_key = f"information_topic_action_{message_id}"
+
+    with st.container(key=f"information_topics_card_{message_id}"):
+        st.markdown(header, unsafe_allow_html=True)
+        columns = st.columns(2, gap="small")
+        for index, (group_title, topics) in enumerate(INFORMATION_TOPIC_GROUPS):
+            with columns[index % len(columns)], st.container(
+                key=f"information_topic_group_{message_id}_{index}"
+            ):
+                st.markdown(f"##### {group_title}")
+                selection_key = f"information_topic_{message_id}_{index}"
+                st.pills(
+                    group_title,
+                    options=topics,
+                    format_func=_information_topic_label,
+                    key=selection_key,
+                    on_change=_queue_information_topic,
+                    args=(selection_key, action_key),
+                    disabled=not actionable,
+                    label_visibility="collapsed",
+                    width="stretch",
+                )
+
+    selected_topic = st.session_state.pop(action_key, None)
+
+    if (
+        not actionable
+        or not isinstance(selected_topic, str)
+        or selected_topic not in INFORMATION_TOPIC_TITLES
+    ):
+        return None
+
+    title = INFORMATION_TOPIC_TITLES[selected_topic]
+    return Shortcut(
+        visible_text=f"Tell me about {title}",
+        api_text=InformationTopicSelection(
+            InformationTopic(selected_topic)
+        ).to_wire(),
+        source_message_id=None,
+    )
+
+
+def _information_topic_label(topic: str) -> str:
+    return f"{INFORMATION_TOPIC_SYMBOLS[topic]}  {INFORMATION_TOPIC_TITLES[topic]}"
+
+
+def _queue_information_topic(selection_key: str, action_key: str) -> None:
+    """Queue one chip click and clear its selection for repeat clicks."""
+
+    selection = st.session_state.get(selection_key)
+    if not isinstance(selection, str):
+        return
+    st.session_state[action_key] = selection
+    st.session_state[selection_key] = None
 
 
 def _render_room_cards(

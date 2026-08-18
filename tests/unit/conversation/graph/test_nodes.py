@@ -32,9 +32,13 @@ from conversation.models.translation.interface import TranslatorInterface
 from conversation.user_interaction import UserInteraction
 from conversation.value_object.action import Action
 from conversation.value_object.information_fields import InformationField
+from conversation.value_object.information_topic_selection import (
+    InformationTopicSelection,
+)
 from conversation.value_object.intent import Intent
 from domain.services.find_matching_rooms import MatchResponse
 from domain.value_objects.booking_status import BookingStatus
+from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.money import Money
 
 
@@ -227,7 +231,53 @@ def test_extractor_receives_current_translated_message() -> None:
     )
 
     assert result["extracted_information"] == [information]
-    extractor.extract.assert_called_once_with(message=current)
+    extractor.extract.assert_called_once_with(
+        message=current,
+        expected_field=None,
+    )
+
+
+def test_information_topic_selection_bypasses_extractor() -> None:
+    nodes, _, _, extractor, *_ = make_nodes()
+    wire = InformationTopicSelection(InformationTopic.WIFI).to_wire()
+
+    result = nodes.extract_information(
+        graph_state(translated_message=Message(wire), message_history=[])
+    )
+
+    extracted = result["extracted_information"]
+    assert len(extracted) == 1
+    assert extracted[0].information_field is InformationField.INFORMATION_TOPIC
+    assert extracted[0].content == InformationTopic.WIFI.value
+    extractor.extract.assert_not_called()
+
+
+def test_information_topic_selection_survives_progress_validation() -> None:
+    nodes, *_ = make_nodes()
+    wire = InformationTopicSelection(InformationTopic.EARLY_CHECK_IN).to_wire()
+    information = Information(
+        InformationField.INFORMATION_TOPIC,
+        InformationTopic.EARLY_CHECK_IN.value,
+    )
+
+    result = nodes.update_progress(
+        graph_state(
+            parsed_message=Message(wire),
+            translated_message=Message(wire),
+            detected_intent=Intent.INFORMATION_REQUEST,
+            current_intent=Intent.INFORMATION_REQUEST,
+            expected_interaction=None,
+            extracted_information=[information],
+            collected_information={},
+            original_message_extracted_fields=[],
+            unknown_counter=0,
+        )
+    )
+
+    assert result["extracted_information"] == [information]
+    assert result["collected_information"] == {
+        InformationField.INFORMATION_TOPIC: information
+    }
 
 
 def test_update_progress_increments_consecutive_unknown_counter() -> None:

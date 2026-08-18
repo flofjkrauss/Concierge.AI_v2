@@ -10,7 +10,6 @@ class InformationField(StrEnum):
     FIRST_NAME = "first_name"
     LAST_NAME = "last_name"
     EMAIL = "email"
-    BOOKING_ID = "booking_id"
     INFORMATION_TOPIC = "information_topic"
     PREFERRED_LANG = "preferred_language"
     PHONE = "phone"

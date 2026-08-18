@@ -22,7 +22,7 @@ class ApplicationSettings(Settings):
     # webserver config
     host: str = "127.0.0.1"
     #host: str = "192.168.1.167"
-    #host: str = "0.0.0.0"
+    #host: str = "10.8.0.10"
     port: int = 8000
     reload: bool = False
     api_health_endpoint = "".join([
@@ -57,6 +57,7 @@ class ApplicationSettings(Settings):
     conversation_request_timeout_seconds: float | None = None
 
     primary_processing_unit: str = "cpu"
+    #primary_processing_unit: str = "cuda"
     fallback_processing_unit: str = "cpu"
     model_cpu_threads: int = _DEFAULT_INFERENCE_THREADS
     model_warmup_enabled: bool = True

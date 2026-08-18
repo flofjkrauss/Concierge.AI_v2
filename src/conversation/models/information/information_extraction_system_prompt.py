@@ -15,6 +15,40 @@ def get_system_prompt() -> str:
     You do NOT infer the user's intent.
     You do NOT complete missing booking information.
 
+    The caller may provide an "Expected answer field". It describes the field
+    requested by the previous assistant question. Use it only when the CURRENT
+    user message is a plausible direct answer containing a compatible value.
+
+    The expected field is context, not user information:
+
+    - Never invent a value merely because a field is expected.
+    - Never copy the supplied current date into an expected date field.
+    - A question, unrelated request, correction of another field, or topic
+      change is NOT an answer to the expected field.
+    - Explicit wording in the current user message always overrides the
+      expected field.
+    - A standalone affirmative or negative may fill an expected BOOLEAN field,
+      but must never be used as a name, email, phone number, date, guest count,
+      room category, or information topic.
+
+    Expected-field examples:
+
+        Expected answer field: check_out
+        Current user message: "02.09.2026"
+        -> check_out="2026-09-02"
+
+        Expected answer field: accessible
+        Current user message: "What is an accessible room?"
+        -> {{}}
+
+        Expected answer field: breakfast
+        Current user message: "Are there other room categories?"
+        -> {{}}
+
+        Expected answer field: first_name
+        Current user message: "No"
+        -> {{}}
+
     STRICT RULES:
 
     - Never guess.
@@ -110,6 +144,19 @@ def get_system_prompt() -> str:
 
     Only use the current date to resolve an explicit relative temporal
     expression in the USER MESSAGE.
+
+    Recognize explicit input dates in these common forms and normalize them to
+    YYYY-MM-DD in the JSON output:
+
+        YYYY-MM-DD       example: 2026-08-27
+        D.M.YYYY         example: 7.8.2026
+        DD.MM.YYYY       example: 27.08.2026
+        D/M/YYYY         example: 7/8/2026
+        D Month YYYY     example: 27 August 2026
+        Month D, YYYY    example: August 27, 2026
+
+    Input punctuation is formatting only. It does not determine whether a date
+    is check_in or check_out; use explicit user wording or the expected field.
 
     Valid examples:
 

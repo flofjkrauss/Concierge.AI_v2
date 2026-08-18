@@ -23,13 +23,21 @@ class InformationExtractorInterface(ABC):
     """Define the data operations required by the business services."""
 
     @abstractmethod
-    def extract(self, message: Message) -> list[Information]:
+    def extract(
+        self,
+        message: Message,
+        expected_field: InformationField | None = None,
+    ) -> list[Information]:
         """extract information fields from given user message"""
         
 
 class DummyInformationExtractor:
 
-    def extract(self, message: Message) -> list[Information]:
+    def extract(
+        self,
+        message: Message,
+        expected_field: InformationField | None = None,
+    ) -> list[Information]:
         """Return manually set information fields depending on message.original_content keywords"""
 
         if message.original_content == "yes" or message.original_content == "no":

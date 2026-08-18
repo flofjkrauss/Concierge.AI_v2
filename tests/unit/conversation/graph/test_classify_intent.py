@@ -11,7 +11,11 @@ from conversation.graph.nodes.context import ConversationNodeContext
 from conversation.graph.state import ConversationState
 from conversation.models.intent.interface import IntentionDetectorInterface
 from conversation.value_object.booking_selection import BookingSelection
+from conversation.value_object.information_topic_selection import (
+    InformationTopicSelection,
+)
 from conversation.value_object.intent import Intent
+from domain.value_objects.information_topic import InformationTopic
 from domain.value_objects.room_category import RoomCategory
 
 
@@ -42,6 +46,19 @@ def test_booking_selection_bypasses_model_classifier() -> None:
     )
 
     assert result == {"detected_intent": Intent.BOOKING_REQUEST}
+    classifier.determine.assert_not_called()
+
+
+def test_information_topic_selection_bypasses_model_classifier() -> None:
+    classifier = Mock(spec=IntentionDetectorInterface)
+    wire = InformationTopicSelection(InformationTopic.WIFI).to_wire()
+
+    result = classify_intent(
+        _context(classifier),
+        _state(translated_message=Message(wire)),
+    )
+
+    assert result == {"detected_intent": Intent.INFORMATION_REQUEST}
     classifier.determine.assert_not_called()
 
 

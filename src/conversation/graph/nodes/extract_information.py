@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 
 from .context import ConversationNodeContext
 from .support import (
@@ -10,6 +11,7 @@ from .support import (
     ConversationState,
     Information,
     InformationField,
+    InformationTopicSelection,
     Message,
     StateUpdate,
     _booking_selection_information,
@@ -41,6 +43,16 @@ _BOOLEAN_FIELDS = frozenset(
 
 _INTEGER_FIELDS = frozenset({InformationField.GUEST_COUNT})
 
+_NUMERIC_DATE_PATTERNS = (
+    re.compile(
+        r"(?P<year>\d{4})\s*-\s*(?P<month>\d{1,2})\s*-\s*(?P<day>\d{1,2})"
+    ),
+    re.compile(
+        r"(?P<day>\d{1,2})\s*[./]\s*(?P<month>\d{1,2})\s*[./]\s*"
+        r"(?P<year>\d{4})"
+    ),
+)
+
 
 def extract_information(
     context: ConversationNodeContext, state: ConversationState
@@ -49,28 +61,80 @@ def extract_information(
 
     translated_message = _required_message(state, "translated_message")
 
+    information_selection = InformationTopicSelection.from_wire(
+        translated_message.content
+    )
+    if information_selection is not None:
+        return {
+            "extracted_information": [
+                Information(
+                    InformationField.INFORMATION_TOPIC,
+                    information_selection.topic.value,
+                )
+            ]
+        }
+
     booking_selection = BookingSelection.from_wire(translated_message.content)
     if booking_selection is not None:
         return {
             "extracted_information": _booking_selection_information(booking_selection)
         }
 
-    message = translated_message
     original_message = state.get("parsed_message")
-    if (
-        state.get("expected_interaction") is not None
-        and isinstance(original_message, Message)
-    ):
-        message = original_message
+    requested_fields = _open_requested_fields(state)
+    requested_field = state.get("next_missing_field")
+    expected_field = (
+        requested_field if requested_field in requested_fields else None
+    )
+    model_expected_field = (
+        expected_field if expected_field in _DATE_FIELDS else None
+    )
+
+    literal_date = _date_from_original_message(
+        expected_field,
+        original_message=original_message,
+    )
+    if literal_date is not None:
+        return {
+            "extracted_information": [literal_date],
+            "original_message_extracted_fields": [
+                literal_date.information_field
+            ],
+        }
+
+    original_available = isinstance(original_message, Message)
+    use_original_first = original_available and (
+        expected_field is not None or state.get("expected_interaction") is not None
+    )
+    message = original_message if use_original_first else translated_message
 
     try:
-        extracted = context.information_extractor.extract(message=message)
+        extracted = context.information_extractor.extract(
+            message=message,
+            expected_field=model_expected_field,
+        )
         valid_information = _valid_extracted_information(extracted)
     except Exception as error:  # noqa: BLE001
         _safe_log_exception("Information extraction failed", error)
         valid_information = []
 
-    requested_fields = _open_requested_fields(state)
+    valid_information, original_information_request = (
+        _discard_expected_value_for_information_request(
+            valid_information,
+            expected_field=expected_field if use_original_first else None,
+        )
+    )
+    original_fields = (
+        {
+            information.information_field
+            for information in valid_information
+        }
+        if use_original_first
+        else set()
+    )
+
+    if original_information_request:
+        return _extraction_update(valid_information, original_fields)
 
     integer_information = _integer_from_original_message(
         state,
@@ -88,10 +152,10 @@ def extract_information(
 
     if (
         not requested_fields
-        or not isinstance(original_message, Message)
-        or original_message.content == message.content
+        or not original_available
+        or original_message.content == translated_message.content
     ):
-        return {"extracted_information": valid_information}
+        return _extraction_update(valid_information, original_fields)
 
     literal_emails = _literal_emails(original_message.content)
     valid_information = _apply_original_email_authority(
@@ -99,42 +163,126 @@ def extract_information(
         requested_fields=requested_fields,
         literal_emails=literal_emails,
     )
+    if (
+        InformationField.EMAIL in requested_fields
+        and any(
+            information.information_field == InformationField.EMAIL
+            for information in valid_information
+        )
+    ):
+        original_fields.add(InformationField.EMAIL)
     missing_fields = _missing_requested_fields(
         requested_fields,
         valid_information,
     )
 
     if not missing_fields:
-        return {"extracted_information": valid_information}
+        return _extraction_update(valid_information, original_fields)
+
+    fallback_message = translated_message if use_original_first else original_message
+    fallback_is_original = not use_original_first
 
     try:
-        original_extracted = context.information_extractor.extract(
-            message=original_message
+        fallback_extracted = context.information_extractor.extract(
+            message=fallback_message,
+            expected_field=model_expected_field,
         )
-        original_information = _valid_extracted_information(original_extracted)
+        fallback_information = _valid_extracted_information(fallback_extracted)
     except Exception as error:  # noqa: BLE001
-        _safe_log_exception("Original-message information extraction failed", error)
-        return {"extracted_information": valid_information}
+        _safe_log_exception("Fallback information extraction failed", error)
+        return _extraction_update(valid_information, original_fields)
 
     accepted_fields = _candidate_fields(missing_fields)
-    original_information = [
+    primary_fields = {
+        information.information_field for information in valid_information
+    }
+    fallback_information = [
         information
-        for information in original_information
+        for information in fallback_information
         if information.information_field in accepted_fields
+        and information.information_field not in primary_fields
         and _is_authoritative_email(information, literal_emails)
     ]
 
     valid_information = _merge_information(
         valid_information,
-        original_information,
+        fallback_information,
     )
-    return {
-        "extracted_information": valid_information,
-        "original_message_extracted_fields": [
+    if fallback_is_original:
+        original_fields.update(
             information.information_field
-            for information in original_information
+            for information in fallback_information
+        )
+    return _extraction_update(valid_information, original_fields)
+
+
+def _date_from_original_message(
+    expected_field: InformationField | None,
+    *,
+    original_message: object,
+) -> Information | None:
+    """Parse an unambiguous numeric date answer without using either model."""
+
+    if expected_field not in _DATE_FIELDS or not isinstance(original_message, Message):
+        return None
+
+    content = original_message.content.strip()
+    match: re.Match[str] | None = None
+    for pattern in _NUMERIC_DATE_PATTERNS:
+        match = pattern.fullmatch(content)
+        if match is not None:
+            break
+    if match is None:
+        return None
+
+    try:
+        value: object = date(
+            int(match.group("year")),
+            int(match.group("month")),
+            int(match.group("day")),
+        )
+    except ValueError:
+        value = content
+
+    return Information(expected_field, value)
+
+
+def _extraction_update(
+    extracted: list[Information],
+    original_fields: set[InformationField],
+) -> StateUpdate:
+    update: StateUpdate = {"extracted_information": extracted}
+    if original_fields:
+        update["original_message_extracted_fields"] = [
+            information.information_field
+            for information in extracted
+            if information.information_field in original_fields
+        ]
+    return update
+
+
+def _discard_expected_value_for_information_request(
+    extracted: list[Information],
+    *,
+    expected_field: InformationField | None,
+) -> tuple[list[Information], bool]:
+    """Keep an information question from becoming a booking-field answer."""
+
+    information_request = any(
+        information.information_field == InformationField.INFORMATION_TOPIC
+        for information in extracted
+    )
+    if expected_field is None or not information_request:
+        return extracted, False
+
+    return (
+        [
+            information
+            for information in extracted
+            if information.information_field != expected_field
         ],
-    }
+        True,
+    )
 
 
 def _integer_from_original_message(

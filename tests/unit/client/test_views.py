@@ -1,9 +1,8 @@
 """Tests for Streamlit presentation helpers."""
 
 from contextlib import nullcontext
-from html import escape
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -29,6 +28,10 @@ from client.components.views import (
     render_header,
     render_information_card,
 )
+from conversation.value_object.information_topic_selection import (
+    InformationTopicSelection,
+)
+from domain.value_objects.information_topic import InformationTopic
 
 
 def test_room_image_prefers_matching_resource_image(tmp_path: Path) -> None:
@@ -189,7 +192,7 @@ def test_information_wire_text_is_rendered_as_card(
     views.render_transcript(
         [message],
         asset_dir=Path("assets"),
-        session_active=True,
+        actions_enabled=True,
         consumed_actions=set(),
     )
 
@@ -198,7 +201,9 @@ def test_information_wire_text_is_rendered_as_card(
             topic="wifi",
             answer="Complimentary Wi-Fi is available throughout the hotel.",
             title=None,
-        )
+        ),
+        message_id="information-1",
+        actionable=True,
     )
     markdown.assert_not_called()
 
@@ -258,24 +263,97 @@ def test_available_information_topics_render_as_grouped_card(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     markdown = Mock()
+    pills = Mock()
+    session_state = {"information_topic_action_topics-1": "wifi"}
     monkeypatch.setattr(views.st, "markdown", markdown)
+    monkeypatch.setattr(views.st, "container", lambda **_: nullcontext())
+    monkeypatch.setattr(views.st, "session_state", session_state)
+    monkeypatch.setattr(
+        views.st,
+        "columns",
+        lambda *_, **__: [nullcontext(), nullcontext()],
+    )
+    monkeypatch.setattr(views.st, "pills", pills)
 
-    render_information_card(
+    selected = render_information_card(
         InformationCardData(
             topic="available_topics",
             answer="Available hotel information topics",
             title=None,
-        )
+        ),
+        message_id="topics-1",
+        actionable=True,
     )
 
-    markup = markdown.call_args.args[0]
-    assert "harbour-information-topics-card" in markup
+    markup = markdown.call_args_list[0].args[0]
+    assert "harbour-information-topics-card__header" in markup
     assert "What can I help with?" in markup
     for group_title, _ in views.INFORMATION_TOPIC_GROUPS:
-        assert escape(group_title) in markup
-    for topic_title in views.INFORMATION_TOPIC_TITLES.values():
-        assert topic_title in markup
-    assert markdown.call_args.kwargs == {"unsafe_allow_html": True}
+        assert call(f"##### {group_title}") in markdown.call_args_list
+    assert pills.call_count == len(views.INFORMATION_TOPIC_GROUPS)
+    assert all(
+        pill_call.kwargs["disabled"] is False
+        for pill_call in pills.call_args_list
+    )
+    assert selected is not None
+    assert selected.visible_text == "Tell me about Wi-Fi"
+    assert selected.source_message_id is None
+    assert InformationTopicSelection.from_wire(selected.api_text) == (
+        InformationTopicSelection(InformationTopic.WIFI)
+    )
+    assert "information_topic_action_topics-1" not in session_state
+    assert all(
+        pill_call.kwargs["on_change"] is views._queue_information_topic
+        for pill_call in pills.call_args_list
+    )
+
+
+def test_same_information_topic_can_be_selected_repeatedly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pills = Mock()
+    session_state: dict[str, object] = {}
+    monkeypatch.setattr(views.st, "markdown", Mock())
+    monkeypatch.setattr(views.st, "container", lambda **_: nullcontext())
+    monkeypatch.setattr(views.st, "session_state", session_state)
+    monkeypatch.setattr(
+        views.st,
+        "columns",
+        lambda *_, **__: [nullcontext(), nullcontext()],
+    )
+    monkeypatch.setattr(views.st, "pills", pills)
+
+    information = InformationCardData(
+        topic="available_topics",
+        answer="Available hotel information topics",
+        title=None,
+    )
+    selection_key = "information_topic_topics-1_3"
+    action_key = "information_topic_action_topics-1"
+
+    selections = []
+    for _ in range(2):
+        session_state[selection_key] = "wifi"
+        views._queue_information_topic(selection_key, action_key)
+        selections.append(
+            render_information_card(
+                information,
+                message_id="topics-1",
+                actionable=True,
+            )
+        )
+
+    assert all(selection is not None for selection in selections)
+    assert [selection.visible_text for selection in selections if selection] == [
+        "Tell me about Wi-Fi",
+        "Tell me about Wi-Fi",
+    ]
+    assert all(selection.source_message_id is None for selection in selections if selection)
+    assert session_state[selection_key] is None
+    assert all(
+        pill_call.kwargs["disabled"] is False
+        for pill_call in pills.call_args_list
+    )
 
 
 def test_booking_amenities_render_only_requested_icons() -> None:

@@ -37,6 +37,20 @@ def test_extract_converts_valid_fields_and_ignores_invalid_values() -> None:
     extractor._model.create_chat_completion.assert_called_once()
 
 
+def test_extract_provides_expected_field_as_context() -> None:
+    extractor = _extractor_with_response('{"check_out":"2030-06-10"}')
+
+    result = extractor.extract(
+        Message("10.06.2030"),
+        expected_field=InformationField.CHECK_OUT,
+    )
+
+    assert result[0].information_field is InformationField.CHECK_OUT
+    messages = extractor._model.create_chat_completion.call_args.kwargs["messages"]
+    assert "Expected answer field: check_out" in messages[1]["content"]
+    assert "Current user message:\n10.06.2030" in messages[1]["content"]
+
+
 def test_extract_rejects_non_textual_model_content() -> None:
     extractor = _extractor_with_response(None)
 
